@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  color-scheme: dark;
+  --bg:        #0d0d0f;
+  --surface:   #16161a;
+  --surface2:  #1e1e24;
+  --border:    #2a2a35;
+  --accent:    #fe7c12;
+  --accent-rgb: 254, 124, 18;
+  --accent2:   #e85d75;
+  --accent2-rgb: 232, 93, 117;
+  --text:      #e8e8f0;
+  --muted:     #6b6b80;
+  --success:   #4ade80;
+  --success-rgb: 74, 222, 128;
+  --warning:   #fbbf24;
+  --warning-rgb: 251, 191, 36;
+  --status-backlog:    #6b6b80;
+  --status-playing:    #7c6af7;
+  --status-live_service: #ec4899;
+  --status-finished:   #4ade80;
+  --status-want_again: #eab308;
+  --status-abandoned:  #e85d75;
+  --status-wishlist:   #38bdf8;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg:        #faf7f2;
+  --surface:   #ffffff;
+  --surface2:  #f2ede4;
+  --border:    #e6ddd0;
+  --accent:    #ea580c;
+  --accent-rgb: 234, 88, 12;
+  --accent2:   #d1425a;
+  --accent2-rgb: 209, 66, 90;
+  --text:      #2a221a;
+  --muted:     #8a7f6f;
+  --success:   #16a34a;
+  --success-rgb: 22, 163, 74;
+  --warning:   #b45309;
+  --warning-rgb: 180, 83, 9;
+  --status-backlog:    #8a7f6f;
+  --status-playing:    #5b4bc4;
+  --status-live_service: #be185d;
+  --status-finished:   #16a34a;
+  --status-want_again: #b45309;
+  --status-abandoned:  #d1425a;
+  --status-wishlist:   #0284c7;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  height: 100vh;
+  user-select: none;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+button { font-family: 'Outfit', sans-serif; cursor: pointer; border: none; outline: none; }
+input, textarea, select { font-family: 'Outfit', sans-serif; outline: none; border: none; }
+.mono { font-family: 'Space Mono', monospace; }

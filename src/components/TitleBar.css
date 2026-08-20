@@ -1,0 +1,5 @@
+.titlebar { height: 38px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; -webkit-app-region: drag; flex-shrink: 0; }
+.titlebar-drag-region { flex: 1; height: 100%; }
+.titlebar-logo { display: flex; align-items: center; gap: 8px; -webkit-app-region: no-drag; }
+.titlebar-icon { width: 18px; height: 18px; }
+.titlebar-name { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; color: var(--text); text-transform: uppercase; }
