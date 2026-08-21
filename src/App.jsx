@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import GameGrid from './components/GameGrid';
 import StatsPage from './components/StatsPage';
+import SettingsPage from './components/SettingsPage';
 import AddGameModal from './components/AddGameModal';
 import GameDetailModal from './components/GameDetailModal';
 import TitleBar from './components/TitleBar';
 import './App.css';
 import { importSteamLibrary, enrichWithHLTB } from './api/steam';
+import { applyColorScheme } from './theme';
 
 // Matches IGDB's genre taxonomy so manually picked genres line up with
 // whatever IGDB search/import already writes into the genres column.
@@ -39,11 +41,19 @@ export default function App() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+  const [mainColor, setMainColor] = useState(() => localStorage.getItem('mainColor') || 'neutral');
+  const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accentColor') || 'orange');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    applyColorScheme(theme, mainColor, accentColor);
+    localStorage.setItem('mainColor', mainColor);
+    localStorage.setItem('accentColor', accentColor);
+  }, [theme, mainColor, accentColor]);
 
   function toggleTheme() {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
@@ -237,13 +247,21 @@ export default function App() {
           setView={setView}
           counts={counts}
           onAddGame={() => setShowAddModal(true)}
-          onImportSteam={handleImportSteam}
-          onDeleteAll={handleDeleteAllGames}
-          theme={theme}
-          onToggleTheme={toggleTheme}
         />
         {view === 'stats' ? (
           <StatsPage games={games} />
+        ) : view === 'settings' ? (
+          <SettingsPage
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            mainColor={mainColor}
+            setMainColor={setMainColor}
+            accentColor={accentColor}
+            setAccentColor={setAccentColor}
+            onImportSteam={handleImportSteam}
+            onDeleteAll={handleDeleteAllGames}
+            gameCount={games.length}
+          />
         ) : (
           <GameGrid
             games={filtered}

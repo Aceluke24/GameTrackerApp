@@ -1,7 +1,7 @@
 import { STATUSES } from '../App';
 import './Sidebar.css';
 
-export default function Sidebar({ filter, setFilter, view, setView, counts, onAddGame, onImportSteam, onDeleteAll, theme, onToggleTheme }) {
+export default function Sidebar({ filter, setFilter, view, setView, counts, onAddGame }) {
   function selectFilter(key) {
     setFilter(key);
     setView('games');
@@ -11,9 +11,6 @@ export default function Sidebar({ filter, setFilter, view, setView, counts, onAd
     <aside className="sidebar">
       <button className="add-btn" onClick={onAddGame}>
         <span>＋</span> Add Game
-      </button>
-      <button className="import-btn" onClick={onImportSteam}>
-        <span>🎮</span> Import Steam
       </button>
       <nav className="sidebar-nav">
         <button className={`nav-item ${view === 'games' && filter === 'all' ? 'active' : ''}`} onClick={() => selectFilter('all')}>
@@ -36,10 +33,10 @@ export default function Sidebar({ filter, setFilter, view, setView, counts, onAd
       </nav>
       <div className="sidebar-footer">
         <span className="mono" style={{ fontSize: '11px', color: 'var(--muted)' }}>{counts.all} games tracked</span>
-        <button className="theme-toggle-btn" onClick={onToggleTheme}>
-          {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
+        <button className={`nav-item ${view === 'settings' ? 'active' : ''}`} onClick={() => setView('settings')}>
+          <span className="nav-emoji">⚙</span>
+          <span className="nav-label">Settings</span>
         </button>
-        <button className="delete-all-btn" onClick={onDeleteAll}>Delete All Games</button>
       </div>
     </aside>
   );
