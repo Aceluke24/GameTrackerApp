@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   signUp:  (email, password) => ipcRenderer.invoke('auth:signUp', email, password),
   signIn:  (email, password) => ipcRenderer.invoke('auth:signIn', email, password),
   signOut: ()                => ipcRenderer.invoke('auth:signOut'),
+  deleteAccount: ()          => ipcRenderer.invoke('auth:deleteAccount'),
   getSession: ()             => ipcRenderer.invoke('auth:getSession'),
   onAuthChange: (callback) => {
     const handler = (_, session) => callback(session);

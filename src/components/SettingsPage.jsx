@@ -3,7 +3,7 @@ import './SettingsPage.css';
 
 export default function SettingsPage({
   theme, onToggleTheme, mainColor, setMainColor, accentColor, setAccentColor,
-  onImportSteam, onDeleteAll, gameCount, userEmail, onSignOut,
+  onImportSteam, onDeleteAll, gameCount, userEmail, onSignOut, onDeleteAccount,
 }) {
   return (
     <div className="settings-page">
@@ -97,6 +97,13 @@ export default function SettingsPage({
             <p className="settings-row-desc">Permanently remove all {gameCount} game{gameCount !== 1 ? 's' : ''} from your vault. This cannot be undone.</p>
           </div>
           <button className="settings-danger-btn" onClick={onDeleteAll}>Delete All Games</button>
+        </div>
+        <div className="settings-row">
+          <div>
+            <p className="settings-row-title">Delete Account</p>
+            <p className="settings-row-desc">Permanently delete your account and everything in it. This cannot be undone.</p>
+          </div>
+          <button className="settings-danger-btn" onClick={onDeleteAccount}>Delete Account</button>
         </div>
       </div>
     </div>

@@ -12,7 +12,8 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 - Steam library import, enriched with HowLongToBeat completion times via IGDB
 - Shared IGDB metadata cache — completion-time/rating lookups are cached in Supabase and reused across all users, so the same game isn't re-fetched from IGDB every time someone adds it
 - IGDB access tokens auto-refresh in the background — no manual token regeneration every ~60 days
-- Settings page — account info + sign out, Steam import, delete-all, and appearance controls
+- Settings page — account info, sign out, account deletion, Steam import, delete-all, and appearance controls
+- Logging in always lands on the games view, regardless of which page you were on when you last signed out
 - Light/dark mode, plus independent Main (background) and Accent color pickers (5 x 6 presets, hand-tuned for both modes)
 
 ## Stack
@@ -44,10 +45,11 @@ gets committed.
 ### 3. Set up Supabase (free tier)
 1. Create a project at https://supabase.com/dashboard
 2. From the project's **Connect** dialog, grab your **Project URL** and **anon/publishable key**, and add them to `.env` as `SUPABASE_URL` and `SUPABASE_ANON_KEY`
-3. Run the schema against your project (creates the `games` and `igdb_cache` tables, Row Level Security policies, and table grants):
+3. Run the schema against your project (creates the `games` and `igdb_cache` tables, Row Level Security policies, table grants, and a self-service account-deletion function):
 ```bash
 psql "<your Postgres connection string from Connect → Session pooler>" -f supabase/migrations/0001_init.sql
 psql "<same connection string>" -f supabase/migrations/0002_grants.sql
+psql "<same connection string>" -f supabase/migrations/0003_delete_own_account.sql
 ```
    (Only needed once per Supabase project — not required for every developer machine, just whoever's setting up that project.)
 
@@ -124,7 +126,6 @@ game-vault/
 
 ## Roadmap / known limitations
 - **Email confirmation redirect** — Supabase's confirmation email currently links to a blank `localhost` page instead of back into the app; sign-in still works manually afterward, but the redirect needs a proper landing page or deep link.
-- **Account deletion** — there's no way to delete your account from Settings yet (only sign out). Needs an IPC call to Supabase's admin/auth API plus a confirmation flow.
 - **Steam import isn't per-user yet** — the Steam API key and Steam ID are currently hardcoded in `src/api/steam.js` (one personal account), so importing only works for whoever's key is pasted in there. Needs to move into Settings as a per-user input instead.
 
 ---

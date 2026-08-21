@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import GameGrid from './components/GameGrid';
 import StatsPage from './components/StatsPage';
@@ -75,9 +75,17 @@ export default function App() {
     return window.electronAPI.onAuthChange(s => setSession(s ?? null));
   }, []);
 
-  // Load the games library once we know who's logged in.
+  // Load the games library once we know who's logged in, and always land on
+  // the games view for a fresh login — but not on every session update, since
+  // a background token refresh also produces a "new" session object and
+  // shouldn't yank the user off whatever page they're on.
+  const wasLoggedInRef = useRef(false);
   useEffect(() => {
-    if (session) loadGames();
+    if (session) {
+      loadGames();
+      if (!wasLoggedInRef.current) setView('games');
+    }
+    wasLoggedInRef.current = !!session;
   }, [session]);
 
   async function handleSignOut() {
@@ -88,6 +96,22 @@ export default function App() {
     } finally {
       setGames([]);
       setSession(null);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    const confirmed = confirm(
+      `Permanently delete your account and all ${games.length} game${games.length !== 1 ? 's' : ''}? This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      if (window.electronAPI) await window.electronAPI.deleteAccount();
+      setGames([]);
+      setSession(null);
+    } catch (err) {
+      console.error('Delete account failed:', err);
+      alert('Failed to delete account — check the console for details.');
     }
   }
 
@@ -309,6 +333,7 @@ export default function App() {
             gameCount={games.length}
             userEmail={session.user?.email}
             onSignOut={handleSignOut}
+            onDeleteAccount={handleDeleteAccount}
           />
         ) : (
           <GameGrid

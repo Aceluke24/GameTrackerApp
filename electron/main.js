@@ -131,6 +131,7 @@ ipcMain.handle('igdb:setCached', (_, entry) => db.setCachedIgdbGame(entry));
 ipcMain.handle('auth:signUp', (_, email, password) => auth.signUp(email, password));
 ipcMain.handle('auth:signIn', (_, email, password) => auth.signIn(email, password));
 ipcMain.handle('auth:signOut', () => auth.signOut());
+ipcMain.handle('auth:deleteAccount', () => auth.deleteAccount());
 ipcMain.handle('auth:getSession', () => auth.getSession());
 
 ipcMain.on('window:minimize', (event) => {
