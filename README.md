@@ -1,6 +1,15 @@
-# VaultLog 🎮
+# Game Vault 🎮
 
 Your personal game backlog tracker — a desktop app built with Electron + React + SQLite.
+
+## Features
+- Track games by status (Backlog, Playing, Finished, Play Again, Abandoned, Wishlist, Live Service)
+- Search by title, platform, or genre — one search bar, no separate filter UI
+- Editable genre tags per game, picked from a curated list matching IGDB's taxonomy
+- Stats dashboard — backlog time remaining, completion rate, genre/platform breakdown, a random "what to play" recommendation
+- Steam library import, enriched with HowLongToBeat completion times via IGDB
+- Settings page — Steam import, delete-all, and appearance controls
+- Light/dark mode, plus independent Main (background) and Accent color pickers (5 x 6 presets, hand-tuned for both modes)
 
 ## Stack
 - **Electron** — desktop shell (packages to .exe / .dmg / .AppImage)
@@ -61,23 +70,30 @@ npm run dist
 ## Project Structure
 
 ```
-vaultlog/
+game-vault/
 ├── electron/
 │   ├── main.js        ← Electron entry point, window creation, IPC handlers
 │   ├── preload.js     ← Secure bridge between React and Node.js
 │   └── database.js    ← All SQLite queries live here
+├── build/
+│   └── icon.png        ← Source app icon for electron-builder
+├── public/
+│   └── icons8-*.png     ← App icon (favicon, dock/window icon)
 ├── src/
 │   ├── api/
-│   │   ├── igdb.js    ← IGDB game search + time to beat
-│   │   └── steam.js   ← Steam library import
+│   │   ├── igdb.js       ← IGDB game search + time to beat
+│   │   └── steam.js      ← Steam library import
 │   ├── components/
-│   │   ├── TitleBar   ← Custom window title bar
-│   │   ├── Sidebar    ← Navigation + status filters
-│   │   ├── GameGrid   ← Main game card grid
-│   │   ├── AddGameModal    ← Search IGDB + add game
-│   │   └── GameDetailModal ← View/edit game details
-│   ├── App.jsx        ← Root component, state management
-│   └── styles.css     ← Global CSS variables + base styles
+│   │   ├── TitleBar        ← Custom window title bar
+│   │   ├── Sidebar         ← Navigation + status filters
+│   │   ├── GameGrid        ← Main game card grid + search bar
+│   │   ├── AddGameModal     ← Search IGDB + add game
+│   │   ├── GameDetailModal  ← View/edit game details + genres
+│   │   ├── StatsPage        ← Backlog stats + recommendation
+│   │   └── SettingsPage     ← Steam import, delete-all, theme/color pickers
+│   ├── App.jsx         ← Root component, state management
+│   ├── theme.js        ← Main/Accent color presets
+│   └── styles.css      ← Global CSS variables + base styles
 ├── index.html
 ├── vite.config.js
 └── package.json
@@ -86,12 +102,11 @@ vaultlog/
 ---
 
 ## Adding Features (ideas)
-- **Steam import**: call `importSteamLibrary()` from `src/api/steam.js` — already wired up
 - **PSN import**: use the `psn-api` npm package
 - **Xbox import**: use the OpenXBL API (https://xbl.io)
-- **Stats page**: total hours in backlog, games per platform, completion rate
 - **Export to CSV**: add an IPC handler in `electron/main.js`
 - **Auto-refresh IGDB tokens**: store tokens in SQLite, refresh when expired
+- **Custom accent colors**: extend `src/theme.js` beyond the preset swatches to a full color picker
 
 ---
 
