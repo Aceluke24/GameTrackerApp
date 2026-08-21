@@ -68,6 +68,12 @@ function createWindow() {
     },
   });
 
+  // Windows/Linux lose their native minimize/maximize/close buttons under
+  // frame:false — TitleBar.jsx renders replacements there, kept in sync via
+  // these events (macOS keeps its native traffic lights via titleBarStyle).
+  win.on('maximize', () => win.webContents.send('window:maximizeChanged', true));
+  win.on('unmaximize', () => win.webContents.send('window:maximizeChanged', false));
+
   if (isDev) {
     win.loadURL('http://localhost:5173');
     win.webContents.openDevTools();
@@ -106,3 +112,18 @@ ipcMain.handle('igdb:getToken', async () => ({
   accessToken: await getValidIgdbToken(),
   clientId: IGDB_CLIENT_ID,
 }));
+
+ipcMain.on('window:minimize', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.minimize();
+});
+ipcMain.on('window:toggleMaximize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return;
+  win.isMaximized() ? win.unmaximize() : win.maximize();
+});
+ipcMain.on('window:close', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.close();
+});
+ipcMain.handle('window:isMaximized', (event) => {
+  return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false;
+});

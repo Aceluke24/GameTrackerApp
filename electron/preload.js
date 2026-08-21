@@ -18,4 +18,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // IGDB auth — main process holds the client secret and refreshes the
   // token as needed; the renderer just asks for a currently-valid one.
   getIGDBToken: () => ipcRenderer.invoke('igdb:getToken'),
+
+  // Window controls — macOS keeps its native traffic lights (titleBarStyle),
+  // but frame:false drops them on Windows/Linux, so TitleBar.jsx renders its
+  // own minimize/maximize/close buttons there, wired through these.
+  platform: process.platform,
+  minimizeWindow: () => ipcRenderer.send('window:minimize'),
+  toggleMaximizeWindow: () => ipcRenderer.send('window:toggleMaximize'),
+  closeWindow: () => ipcRenderer.send('window:close'),
+  isWindowMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  onMaximizeChange: (callback) => {
+    const handler = (_, isMaximized) => callback(isMaximized);
+    ipcRenderer.on('window:maximizeChanged', handler);
+    return () => ipcRenderer.removeListener('window:maximizeChanged', handler);
+  },
 });

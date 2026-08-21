@@ -3,3 +3,7 @@
 .titlebar-logo { display: flex; align-items: center; gap: 8px; -webkit-app-region: no-drag; }
 .titlebar-icon { width: 18px; height: 18px; }
 .titlebar-name { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; color: var(--text); text-transform: uppercase; }
+.titlebar-controls { display: flex; align-items: stretch; height: 100%; -webkit-app-region: no-drag; flex: 0 0 auto; }
+.titlebar-btn { width: 46px; height: 100%; display: flex; align-items: center; justify-content: center; background: transparent; color: var(--muted); font-size: 13px; line-height: 1; transition: background 0.1s, color 0.1s; }
+.titlebar-btn:hover { background: var(--surface2); color: var(--text); }
+.titlebar-btn-close:hover { background: #e81123; color: white; }
