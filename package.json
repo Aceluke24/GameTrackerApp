@@ -10,15 +10,15 @@
     "electron": "electron ."
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.109.0",
     "axios": "^1.6.7",
-    "better-sqlite3": "^11.0.0",
     "dotenv": "^17.4.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
     "concurrently": "^8.2.2",
-    "electron": "^29.1.0",
-    "electron-builder": "^24.13.3",
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "vite": "^5.1.4",

@@ -65,31 +65,59 @@ function confidenceFromCount(count) {
   return Math.min(100, Math.round((count / 5) * 100));
 }
 
-export async function searchIGDB(gameName) {
+// The name search itself always has to hit IGDB live (it's a live text
+// search, not something to cache by id) — but the per-game enrichment
+// (time-to-beat, rating, genres) is identical for every user looking up the
+// same title, so it's cached in Supabase's igdb_cache table and shared
+// across everyone using the app. Pass skipCache to force a live lookup (used
+// by refreshFromIGDB, which exists specifically to discard stale data).
+export async function searchIGDB(gameName, { skipCache = false } = {}) {
   // Step 1: search for games
   const games = await igdbPost('games',
   `fields name,cover.url,platforms.name,genres.name,rating; search "${gameName}"; limit 10;`
   );
 
-  // Step 2: fetch time to beat for all results in one call
-  let timings = [];
-  if (games.length > 0) {
-    const ids = games.map(g => g.id).join(',');
+  if (games.length === 0) return [];
+
+  // Step 2: check the shared cache for each result before hitting IGDB again
+  const canUseCache = !skipCache && window.electronAPI?.getCachedIgdbGame;
+  const cacheHits = canUseCache
+    ? await Promise.all(games.map(g => window.electronAPI.getCachedIgdbGame(g.id)))
+    : games.map(() => null);
+  const cacheByIgdbId = {};
+  games.forEach((g, i) => { if (cacheHits[i]) cacheByIgdbId[g.id] = cacheHits[i]; });
+
+  // Step 3: fetch time to beat only for games that weren't in the cache
+  const missingIds = games.filter(g => !cacheByIgdbId[g.id]).map(g => g.id);
+  let timingMap = {};
+  if (missingIds.length > 0) {
     try {
-      timings = await igdbPost('game_time_to_beats',
-        `fields game_id,hastily,normally,completely,count; where game_id = (${ids});`
+      const timings = await igdbPost('game_time_to_beats',
+        `fields game_id,hastily,normally,completely,count; where game_id = (${missingIds.join(',')});`
       );
+      timings.forEach(t => { timingMap[t.game_id] = t; });
     } catch (e) {
       // time to beat is optional, don't fail the whole search
       console.warn('Could not fetch time to beat:', e);
     }
   }
 
-  // Map timings by game ID for easy lookup
-  const timingMap = {};
-  timings.forEach(t => { timingMap[t.game_id] = t; });
-
-  return games.map(g => {
+  const results = games.map(g => {
+    const cached = cacheByIgdbId[g.id];
+    if (cached) {
+      return {
+        igdb_id: g.id,
+        title: g.name, // always show the freshest title from the live search
+        cover_url: cached.cover_url,
+        platform: cached.platform,
+        genres: cached.genres,
+        igdb_rating: cached.igdb_rating,
+        hltb_main: cached.hltb_main,
+        hltb_extra: cached.hltb_extra,
+        hltb_complete: cached.hltb_complete,
+        hltb_confidence: cached.hltb_confidence,
+      };
+    }
     const t = timingMap[g.id];
     return {
       igdb_id: g.id,
@@ -106,6 +134,17 @@ export async function searchIGDB(gameName) {
       hltb_confidence: t ? confidenceFromCount(t.count) : null,
     };
   });
+
+  // Populate the cache for anything that wasn't already in it (fire-and-forget).
+  if (window.electronAPI?.setCachedIgdbGame) {
+    results.forEach((r, i) => {
+      if (!cacheByIgdbId[games[i].id]) {
+        window.electronAPI.setCachedIgdbGame(r).catch(e => console.warn('Failed to cache IGDB entry:', e));
+      }
+    });
+  }
+
+  return results;
 }
 
 // IGDB's search doesn't rank exact title matches first (e.g. "Portal 2" can
@@ -121,7 +160,7 @@ export function pickBestMatch(results, title) {
 // Re-runs the IGDB lookup for one game, discarding any manual corrections —
 // used to reset a game's data back to whatever IGDB currently reports.
 export async function refreshFromIGDB(title) {
-  const results = await searchIGDB(title);
+  const results = await searchIGDB(title, { skipCache: true });
   const match = pickBestMatch(results, title);
   if (!match) return null;
   const { igdb_id, genres, igdb_rating, hltb_main, hltb_extra, hltb_complete, hltb_confidence } = match;

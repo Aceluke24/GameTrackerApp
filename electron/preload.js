@@ -18,6 +18,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // IGDB auth — main process holds the client secret and refreshes the
   // token as needed; the renderer just asks for a currently-valid one.
   getIGDBToken: () => ipcRenderer.invoke('igdb:getToken'),
+  getCachedIgdbGame: (igdbId) => ipcRenderer.invoke('igdb:getCached', igdbId),
+  setCachedIgdbGame: (entry) => ipcRenderer.invoke('igdb:setCached', entry),
+
+  // Account auth — main process holds the Supabase session; the renderer
+  // triggers sign-in/out and gets notified of session changes (login,
+  // logout, silent token refresh) via onAuthChange.
+  signUp:  (email, password) => ipcRenderer.invoke('auth:signUp', email, password),
+  signIn:  (email, password) => ipcRenderer.invoke('auth:signIn', email, password),
+  signOut: ()                => ipcRenderer.invoke('auth:signOut'),
+  getSession: ()             => ipcRenderer.invoke('auth:getSession'),
+  onAuthChange: (callback) => {
+    const handler = (_, session) => callback(session);
+    ipcRenderer.on('auth:changed', handler);
+    return () => ipcRenderer.removeListener('auth:changed', handler);
+  },
 
   // Window controls — macOS keeps its native traffic lights (titleBarStyle),
   // but frame:false drops them on Windows/Linux, so TitleBar.jsx renders its

@@ -3,13 +3,24 @@ import './SettingsPage.css';
 
 export default function SettingsPage({
   theme, onToggleTheme, mainColor, setMainColor, accentColor, setAccentColor,
-  onImportSteam, onDeleteAll, gameCount,
+  onImportSteam, onDeleteAll, gameCount, userEmail, onSignOut,
 }) {
   return (
     <div className="settings-page">
       <div className="settings-header">
         <h1>Settings</h1>
         <p className="settings-sub">Manage your vault</p>
+      </div>
+
+      <div className="settings-section">
+        <h2>Account</h2>
+        <div className="settings-row">
+          <div>
+            <p className="settings-row-title">Signed in</p>
+            <p className="settings-row-desc">{userEmail}</p>
+          </div>
+          <button className="settings-action-btn" onClick={onSignOut}>Sign Out</button>
+        </div>
       </div>
 
       <div className="settings-section">

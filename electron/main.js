@@ -7,10 +7,12 @@ const appIconPath = path.join(__dirname, isDev ? '../public' : '../dist', 'icons
 
 app.setName('Game Vault');
 // Keep the on-disk data folder pinned to its original location so renaming
-// the app's display name never orphans the existing games.db.
+// the app's display name never orphans the local encrypted store (session +
+// cached IGDB token — the game library itself now lives in Supabase).
 app.setPath('userData', path.join(app.getPath('appData'), 'vaultlog'));
 
 const db = require('./database');
+const auth = require('./auth');
 
 const IGDB_CLIENT_ID = process.env.IGDB_CLIENT_ID;
 const IGDB_CLIENT_SECRET = process.env.IGDB_CLIENT_SECRET;
@@ -18,7 +20,7 @@ const TOKEN_REFRESH_MARGIN_MS = 24 * 60 * 60 * 1000;
 
 // IGDB access tokens last ~60 days. Rather than requiring a manual re-paste
 // every couple months, fetch one here — main process only, so the client
-// secret never ships inside the renderer bundle — cache it in SQLite, and
+// secret never ships inside the renderer bundle — cache it locally, and
 // refresh it once it's within a day of expiring.
 async function getValidIgdbToken() {
   const storedToken = db.getSetting('igdb_access_token');
@@ -51,6 +53,8 @@ async function getValidIgdbToken() {
   return data.access_token;
 }
 
+let mainWindow = null;
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -74,6 +78,9 @@ function createWindow() {
   win.on('maximize', () => win.webContents.send('window:maximizeChanged', true));
   win.on('unmaximize', () => win.webContents.send('window:maximizeChanged', false));
 
+  mainWindow = win;
+  win.on('closed', () => { if (mainWindow === win) mainWindow = null; });
+
   if (isDev) {
     win.loadURL('http://localhost:5173');
     win.webContents.openDevTools();
@@ -81,6 +88,12 @@ function createWindow() {
     win.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 }
+
+// Keeps the renderer's auth state in sync with the actual Supabase session —
+// covers login, logout, and silent token refreshes.
+auth.onAuthStateChange((session) => {
+  mainWindow?.webContents.send('auth:changed', session);
+});
 
 app.whenReady().then(() => {
   if (process.platform === 'darwin' && app.dock) {
@@ -97,7 +110,7 @@ app.on('window-all-closed', () => {
 });
 
 // ─── IPC Handlers ─────────────────────────────────────────────────────────────
-// These are the "API endpoints" between your React UI and the SQLite database.
+// These are the "API endpoints" between your React UI and Supabase.
 
 ipcMain.handle('games:getAll', () => db.getAllGames());
 ipcMain.handle('games:add', (_, game) => db.addGame(game));
@@ -112,6 +125,13 @@ ipcMain.handle('igdb:getToken', async () => ({
   accessToken: await getValidIgdbToken(),
   clientId: IGDB_CLIENT_ID,
 }));
+ipcMain.handle('igdb:getCached', (_, igdbId) => db.getCachedIgdbGame(igdbId));
+ipcMain.handle('igdb:setCached', (_, entry) => db.setCachedIgdbGame(entry));
+
+ipcMain.handle('auth:signUp', (_, email, password) => auth.signUp(email, password));
+ipcMain.handle('auth:signIn', (_, email, password) => auth.signIn(email, password));
+ipcMain.handle('auth:signOut', () => auth.signOut());
+ipcMain.handle('auth:getSession', () => auth.getSession());
 
 ipcMain.on('window:minimize', (event) => {
   BrowserWindow.fromWebContents(event.sender)?.minimize();

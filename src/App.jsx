@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import GameGrid from './components/GameGrid';
 import StatsPage from './components/StatsPage';
 import SettingsPage from './components/SettingsPage';
+import LoginPage from './components/LoginPage';
 import AddGameModal from './components/AddGameModal';
 import GameDetailModal from './components/GameDetailModal';
 import TitleBar from './components/TitleBar';
@@ -38,6 +39,9 @@ export default function App() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [loading, setLoading] = useState(true);
+  // undefined = still checking for an existing session, null = logged out,
+  // an object = logged in (holds the Supabase session, including user.email)
+  const [session, setSession] = useState(undefined);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
@@ -59,10 +63,33 @@ export default function App() {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   }
 
-  // Load all games from SQLite on startup
+  // Check for an existing (or newly-changing) Supabase session. In a plain
+  // browser preview without Electron there's no auth to check — fall back to
+  // an always-authed dev session so MOCK_GAMES still renders as before.
   useEffect(() => {
-    loadGames();
+    if (!window.electronAPI) {
+      setSession({ user: { email: 'preview' } });
+      return;
+    }
+    window.electronAPI.getSession().then(s => setSession(s ?? null));
+    return window.electronAPI.onAuthChange(s => setSession(s ?? null));
   }, []);
+
+  // Load the games library once we know who's logged in.
+  useEffect(() => {
+    if (session) loadGames();
+  }, [session]);
+
+  async function handleSignOut() {
+    try {
+      if (window.electronAPI) await window.electronAPI.signOut();
+    } catch (err) {
+      console.error('Sign out failed:', err);
+    } finally {
+      setGames([]);
+      setSession(null);
+    }
+  }
 
   async function loadGames() {
     setLoading(true);
@@ -236,6 +263,25 @@ export default function App() {
     return acc;
   }, { all: games.length });
 
+  if (session === undefined) {
+    return (
+      <div className="app">
+        <TitleBar />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="app">
+        <TitleBar />
+        <div className="app-body">
+          <LoginPage onAuthed={setSession} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <TitleBar />
@@ -261,6 +307,8 @@ export default function App() {
             onImportSteam={handleImportSteam}
             onDeleteAll={handleDeleteAllGames}
             gameCount={games.length}
+            userEmail={session.user?.email}
+            onSignOut={handleSignOut}
           />
         ) : (
           <GameGrid

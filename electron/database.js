@@ -1,103 +1,96 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const { app } = require('electron');
+const supabase = require('./supabaseClient');
+const secureStore = require('./secureStore');
 
-const dbPath = path.join(app.getPath('userData'), 'games.db');
-const db = new Database(dbPath);
+// Supabase errors are plain objects, not real Error instances — thrown as-is
+// they lose their message crossing the Electron IPC boundary (the renderer
+// just sees "[object Object]"). Wrap them in a real Error so ipcMain.handle
+// actually forwards something useful.
+function check(error) {
+  if (error) throw new Error(error.message || JSON.stringify(error));
+}
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS games (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    title           TEXT NOT NULL,
-    platform        TEXT,
-    cover_url       TEXT,
-    igdb_id         INTEGER,
-    hltb_main       INTEGER,
-    hltb_extra      INTEGER,
-    hltb_complete   INTEGER,
-    status          TEXT DEFAULT 'backlog',
-    personal_rating INTEGER,
-    notes           TEXT,
-    date_added      TEXT DEFAULT (date('now')),
-    date_finished   TEXT,
-    source          TEXT DEFAULT 'manual'
-  );
-`);
-
-// Safely add new columns if they don't exist yet
-const existingColumns = db.prepare("PRAGMA table_info(games)").all().map(c => c.name);
-if (!existingColumns.includes('genres'))         db.exec("ALTER TABLE games ADD COLUMN genres TEXT;");
-if (!existingColumns.includes('igdb_rating'))    db.exec("ALTER TABLE games ADD COLUMN igdb_rating INTEGER;");
-if (!existingColumns.includes('hltb_confidence')) db.exec("ALTER TABLE games ADD COLUMN hltb_confidence INTEGER;");
-
-// Small key-value store — currently just holds the cached IGDB access token
-// so it survives app restarts instead of re-fetching one every launch.
-db.exec(`
-  CREATE TABLE IF NOT EXISTS settings (
-    key   TEXT PRIMARY KEY,
-    value TEXT
-  );
-`);
-
+// App-wide settings (currently just the cached IGDB access token) — not
+// per-user data, so this stays in the local encrypted store rather than
+// Supabase.
 function getSetting(key) {
-  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
-  return row ? row.value : null;
+  return secureStore.getItem(key);
 }
 
 function setSetting(key, value) {
-  db.prepare(`
-    INSERT INTO settings (key, value) VALUES (?, ?)
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value
-  `).run(key, value);
+  secureStore.setItem(key, value);
 }
 
-function getAllGames() {
-  return db.prepare('SELECT * FROM games ORDER BY title ASC').all();
+async function getAllGames() {
+  const { data, error } = await supabase.from('games').select('*').order('title', { ascending: true });
+  check(error);
+  return data;
 }
 
-function addGame(game) {
-  const stmt = db.prepare(`
-    INSERT INTO games
-      (title, platform, cover_url, igdb_id, genres, igdb_rating, hltb_main, hltb_extra, hltb_complete, hltb_confidence, status, personal_rating, notes, source)
-    VALUES
-      (@title, @platform, @cover_url, @igdb_id, @genres, @igdb_rating, @hltb_main, @hltb_extra, @hltb_complete, @hltb_confidence, @status, @personal_rating, @notes, @source)
-  `);
-  const result = stmt.run(game);
-  return { id: result.lastInsertRowid, ...game };
+async function addGame(game) {
+  const { data, error } = await supabase.from('games').insert(game).select().single();
+  check(error);
+  return data;
 }
 
-function updateGame(id, fields) {
-  const keys = Object.keys(fields);
-  const setClause = keys.map(k => `${k} = @${k}`).join(', ');
-  const stmt = db.prepare(`UPDATE games SET ${setClause} WHERE id = @id`);
-  stmt.run({ ...fields, id });
-  return db.prepare('SELECT * FROM games WHERE id = ?').get(id);
+async function updateGame(id, fields) {
+  const { data, error } = await supabase.from('games').update(fields).eq('id', id).select().single();
+  check(error);
+  return data;
 }
 
-function deleteGame(id) {
-  db.prepare('DELETE FROM games WHERE id = ?').run(id);
+async function deleteGame(id) {
+  const { error } = await supabase.from('games').delete().eq('id', id);
+  check(error);
   return { success: true };
 }
 
-function deleteAllGames() {
-  db.prepare('DELETE FROM games').run();
+async function deleteAllGames() {
+  // RLS already scopes this to the logged-in user's own rows; the id filter
+  // just satisfies Postgres/PostgREST's requirement that deletes have a
+  // WHERE clause (ids are always > 0).
+  const { error } = await supabase.from('games').delete().gt('id', 0);
+  check(error);
   return { success: true };
 }
 
-function updateGamesStatus(ids, status) {
-  const placeholders = ids.map(() => '?').join(',');
-  db.prepare(`UPDATE games SET status = ? WHERE id IN (${placeholders})`).run(status, ...ids);
+async function updateGamesStatus(ids, status) {
+  const { error } = await supabase.from('games').update({ status }).in('id', ids);
+  check(error);
   return { success: true };
 }
 
-function deleteGames(ids) {
-  const placeholders = ids.map(() => '?').join(',');
-  db.prepare(`DELETE FROM games WHERE id IN (${placeholders})`).run(...ids);
+async function deleteGames(ids) {
+  const { error } = await supabase.from('games').delete().in('id', ids);
+  check(error);
   return { success: true };
 }
 
-function searchGames(query) {
-  return db.prepare("SELECT * FROM games WHERE title LIKE ? ORDER BY title ASC").all(`%${query}%`);
+async function searchGames(query) {
+  const { data, error } = await supabase
+    .from('games')
+    .select('*')
+    .ilike('title', `%${query}%`)
+    .order('title', { ascending: true });
+  check(error);
+  return data;
 }
 
-module.exports = { getAllGames, addGame, updateGame, deleteGame, deleteAllGames, updateGamesStatus, deleteGames, searchGames, getSetting, setSetting };
+// Shared IGDB metadata cache — not user-scoped, see supabase/migrations/0001_init.sql.
+async function getCachedIgdbGame(igdbId) {
+  const { data, error } = await supabase.from('igdb_cache').select('*').eq('igdb_id', igdbId).maybeSingle();
+  check(error);
+  return data;
+}
+
+async function setCachedIgdbGame(entry) {
+  const { error } = await supabase.from('igdb_cache').upsert(entry, { onConflict: 'igdb_id' });
+  check(error);
+  return { success: true };
+}
+
+module.exports = {
+  getAllGames, addGame, updateGame, deleteGame, deleteAllGames,
+  updateGamesStatus, deleteGames, searchGames,
+  getSetting, setSetting,
+  getCachedIgdbGame, setCachedIgdbGame,
+};
