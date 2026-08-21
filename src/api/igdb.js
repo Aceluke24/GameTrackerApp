@@ -1,25 +1,45 @@
-const IGDB_CLIENT_ID = 'lu0hxnmeutdfzd3k7e7pf36jq1ta2q';
-const IGDB_ACCESS_TOKEN = '***REMOVED-LEAKED-TOKEN***';
 const IGDB_BASE = import.meta.env.DEV ? '/igdb' : 'https://api.igdb.com/v4';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// The client secret needed to mint/refresh these tokens must never ship in
+// the renderer bundle, so the main process owns it — it hands back a
+// currently-valid token, refreshing it behind the scenes if needed. Cached
+// in memory for the session so every search doesn't round-trip an IPC call.
+let cachedCredentials = null;
+
+async function getIgdbCredentials() {
+  if (!window.electronAPI?.getIGDBToken) {
+    throw new Error('IGDB requires the Electron app (run via `npm run dev`), not a plain browser preview.');
+  }
+  if (!cachedCredentials) {
+    cachedCredentials = await window.electronAPI.getIGDBToken();
+  }
+  return cachedCredentials;
+}
 
 // IGDB caps requests to ~4/sec. A batch of lookups (e.g. Steam import) fires
 // faster than that, so retry with backoff instead of silently losing data
 // for whichever games land on the rejected requests.
 async function igdbPost(endpoint, body, retries = 3) {
+  const { accessToken, clientId } = await getIgdbCredentials();
   const response = await fetch(`${IGDB_BASE}/${endpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'text/plain',
-      'Client-ID': IGDB_CLIENT_ID,
-      'Authorization': `Bearer ${IGDB_ACCESS_TOKEN}`,
+      'Client-ID': clientId,
+      'Authorization': `Bearer ${accessToken}`,
     },
     body,
   });
   if (response.status === 429 && retries > 0) {
     await sleep(750 * (4 - retries));
     return igdbPost(endpoint, body, retries - 1);
+  }
+  if (response.status === 401) {
+    // The cached token may have been revoked out-of-band — drop it so the
+    // next call forces a fresh fetch through the main process.
+    cachedCredentials = null;
   }
   if (!response.ok) {
     const err = await response.text();

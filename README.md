@@ -8,6 +8,7 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 - Editable genre tags per game, picked from a curated list matching IGDB's taxonomy
 - Stats dashboard — backlog time remaining, completion rate, genre/platform breakdown, a random "what to play" recommendation
 - Steam library import, enriched with HowLongToBeat completion times via IGDB
+- IGDB access tokens auto-refresh in the background — no manual token regeneration every ~60 days
 - Settings page — Steam import, delete-all, and appearance controls
 - Light/dark mode, plus independent Main (background) and Accent color pickers (5 x 6 presets, hand-tuned for both modes)
 
@@ -29,12 +30,13 @@ npm install
 ### 2. Get your IGDB API keys (free)
 1. Go to https://dev.twitch.tv/console → create an app
 2. Copy your **Client ID** and **Client Secret**
-3. Run this to get an access token:
+3. Copy `.env.example` to `.env` and paste both values in:
 ```bash
-curl -X POST "https://id.twitch.tv/oauth2/token" \
-  -d "client_id=YOUR_ID&client_secret=YOUR_SECRET&grant_type=client_credentials"
+cp .env.example .env
 ```
-4. Open `src/api/igdb.js` and paste your Client ID and access token
+The app fetches and auto-refreshes its own IGDB access token using these —
+no manual token generation, and `.env` is gitignored so the secret never
+gets committed.
 
 ### 3. (Optional) Get your Steam API key
 1. Go to https://steamcommunity.com/dev/apikey
@@ -102,10 +104,7 @@ game-vault/
 ---
 
 ## Adding Features (ideas)
-- **PSN import**: use the `psn-api` npm package
-- **Xbox import**: use the OpenXBL API (https://xbl.io)
 - **Export to CSV**: add an IPC handler in `electron/main.js`
-- **Auto-refresh IGDB tokens**: store tokens in SQLite, refresh when expired
 - **Custom accent colors**: extend `src/theme.js` beyond the preset swatches to a full color picker
 
 ---

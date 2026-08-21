@@ -13,12 +13,9 @@ export default defineConfig({
         target: 'https://api.igdb.com/v4',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/igdb/, ''),
-        configure: (proxy) => {
-          proxy.on('proxyReq', (proxyReq) => {
-            proxyReq.setHeader('Client-ID', 'lu0hxnmeutdfzd3k7e7pf36jq1ta2q');
-            proxyReq.setHeader('Authorization', 'Bearer ***REMOVED-LEAKED-TOKEN***');
-          });
-        },
+        // No header injection here — the renderer already sends a live
+        // Client-ID/Authorization pair (see src/api/igdb.js), and the proxy
+        // just forwards it through to dodge the browser's CORS check.
       },
       '/steam': {
         target: 'https://api.steampowered.com',

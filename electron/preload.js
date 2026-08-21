@@ -14,4 +14,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateGamesStatus: (ids, status) => ipcRenderer.invoke('games:updateStatusMany', ids, status),
   deleteGames: (ids)        => ipcRenderer.invoke('games:deleteMany', ids),
   searchGames: (query)      => ipcRenderer.invoke('games:search', query),
+
+  // IGDB auth — main process holds the client secret and refreshes the
+  // token as needed; the renderer just asks for a currently-valid one.
+  getIGDBToken: () => ipcRenderer.invoke('igdb:getToken'),
 });

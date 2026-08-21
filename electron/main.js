@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 
@@ -10,6 +11,45 @@ app.setName('Game Vault');
 app.setPath('userData', path.join(app.getPath('appData'), 'vaultlog'));
 
 const db = require('./database');
+
+const IGDB_CLIENT_ID = process.env.IGDB_CLIENT_ID;
+const IGDB_CLIENT_SECRET = process.env.IGDB_CLIENT_SECRET;
+const TOKEN_REFRESH_MARGIN_MS = 24 * 60 * 60 * 1000;
+
+// IGDB access tokens last ~60 days. Rather than requiring a manual re-paste
+// every couple months, fetch one here — main process only, so the client
+// secret never ships inside the renderer bundle — cache it in SQLite, and
+// refresh it once it's within a day of expiring.
+async function getValidIgdbToken() {
+  const storedToken = db.getSetting('igdb_access_token');
+  const storedExpiry = Number(db.getSetting('igdb_token_expires_at') || 0);
+
+  if (storedToken && storedExpiry > Date.now() + TOKEN_REFRESH_MARGIN_MS) {
+    return storedToken;
+  }
+
+  if (!IGDB_CLIENT_ID || !IGDB_CLIENT_SECRET) {
+    throw new Error('IGDB_CLIENT_ID / IGDB_CLIENT_SECRET are not set — add them to your .env file.');
+  }
+
+  const response = await fetch('https://id.twitch.tv/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: IGDB_CLIENT_ID,
+      client_secret: IGDB_CLIENT_SECRET,
+      grant_type: 'client_credentials',
+    }),
+  });
+  if (!response.ok) throw new Error(`Twitch token request failed: ${response.statusText}`);
+
+  const data = await response.json();
+  const expiresAt = Date.now() + data.expires_in * 1000;
+  db.setSetting('igdb_access_token', data.access_token);
+  db.setSetting('igdb_token_expires_at', String(expiresAt));
+
+  return data.access_token;
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -61,3 +101,8 @@ ipcMain.handle('games:deleteAll', () => db.deleteAllGames());
 ipcMain.handle('games:updateStatusMany', (_, ids, status) => db.updateGamesStatus(ids, status));
 ipcMain.handle('games:deleteMany', (_, ids) => db.deleteGames(ids));
 ipcMain.handle('games:search', (_, query) => db.searchGames(query));
+
+ipcMain.handle('igdb:getToken', async () => ({
+  accessToken: await getValidIgdbToken(),
+  clientId: IGDB_CLIENT_ID,
+}));

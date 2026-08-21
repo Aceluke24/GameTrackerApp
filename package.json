@@ -10,8 +10,9 @@
     "electron": "electron ."
   },
   "dependencies": {
+    "axios": "^1.6.7",
     "better-sqlite3": "^11.0.0",
-    "axios": "^1.6.7"
+    "dotenv": "^17.4.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
@@ -26,10 +27,22 @@
   "build": {
     "appId": "com.yourname.gamevault",
     "productName": "Game Vault",
-    "directories": { "output": "release" },
-    "files": ["dist/**/*", "electron/**/*", "node_modules/**/*"],
-    "win": { "target": "nsis" },
-    "mac": { "target": "dmg" },
-    "linux": { "target": "AppImage" }
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }
