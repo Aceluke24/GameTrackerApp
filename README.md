@@ -149,8 +149,19 @@ it's most reliable to test this against a packaged build (`npm run dist`) instea
 
 ---
 
-## Roadmap / known limitations
-- **Possible: local-only guest mode** — a "Continue without an account" option that falls back to a local SQLite database (no sync, no login), for anyone who'd rather not create an account. Would mean maintaining two parallel data-layer implementations (Supabase + SQLite) and re-adding `better-sqlite3` as a native dependency — not started yet, just an idea worth considering.
+## Roadmap
+
+### Up next
+1. **Password reset** — a "Forgot password" flow. Right now there's no way to recover a forgotten password short of deleting and recreating the account.
+2. **Data export/backup** — let a user export their own library (CSV/JSON) as a personal backup, independent of whatever happens to the app's Supabase project.
+3. **Duplicate detection on manual "Add Game"** — Steam import already checks for existing titles before importing; the manual add-game search doesn't.
+4. **Sorting options** — currently hardcoded to alphabetical (`App.jsx`). Add sort by completion time, rating, and a time-range filter (e.g. "under/over X hours").
+5. **"Next Up" queue** — a small marker/checkbox per game that pins it to the top of the list, so it's easy to see what's up next. Only applies to the default view — an active sort or search takes priority over the pin.
+6. **Offline/network-failure handling** — a deliberate look at what happens when Supabase or IGDB is unreachable, rather than relying on whatever falls out of the existing try/catch + `alert()` pattern.
+
+### Possible future ideas
+- **Price-drop / wishlist tracking** — notify when a Wishlist game drops in price, similar to Opera GX's deal-finder. Needs a new external data source (e.g. CheapShark or IsThereAnyDeal's API) — a genuinely new integration, not an extension of anything already here.
+- **Local-only guest mode** — a "Continue without an account" option that falls back to a local SQLite database (no sync, no login), for anyone who'd rather not create an account. Would mean maintaining two parallel data-layer implementations (Supabase + SQLite) and re-adding `better-sqlite3` as a native dependency.
 
 ---
 
