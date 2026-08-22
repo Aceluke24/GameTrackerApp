@@ -4,9 +4,13 @@ import GameGrid from './components/GameGrid';
 import StatsPage from './components/StatsPage';
 import SettingsPage from './components/SettingsPage';
 import LoginPage from './components/LoginPage';
+import ResetPasswordPage from './components/ResetPasswordPage';
 import AddGameModal from './components/AddGameModal';
 import GameDetailModal from './components/GameDetailModal';
 import SteamImportModal from './components/SteamImportModal';
+import ChangePasswordModal from './components/ChangePasswordModal';
+import Toast from './components/Toast';
+import ConfirmDialog from './components/ConfirmDialog';
 import TitleBar from './components/TitleBar';
 import './App.css';
 import { importSteamLibrary, enrichWithHLTB } from './api/steam';
@@ -39,16 +43,28 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSteamModal, setShowSteamModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [loading, setLoading] = useState(true);
   // undefined = still checking for an existing session, null = logged out,
   // an object = logged in (holds the Supabase session, including user.email)
   const [session, setSession] = useState(undefined);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [mainColor, setMainColor] = useState(() => localStorage.getItem('mainColor') || 'neutral');
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accentColor') || 'orange');
+  const [toast, setToast] = useState(null);
+  const [confirmState, setConfirmState] = useState(null);
+
+  function showToast(message, type = 'success') {
+    setToast({ message, type });
+  }
+
+  function askConfirm(message, onConfirm, { danger = true } = {}) {
+    setConfirmState({ message, onConfirm, danger });
+  }
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -74,7 +90,15 @@ export default function App() {
       return;
     }
     window.electronAPI.getSession().then(s => setSession(s ?? null));
-    return window.electronAPI.onAuthChange(s => setSession(s ?? null));
+    const unsubAuth = window.electronAPI.onAuthChange((s, event) => {
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
+      setSession(s ?? null);
+    });
+    // The reliable signal — see main.js's handleAuthDeepLink. Supabase's own
+    // PASSWORD_RECOVERY event only fires from its browser-URL detection,
+    // which is off here (there's no URL bar in Electron).
+    const unsubRecovery = window.electronAPI.onPasswordRecovery(() => setPasswordRecovery(true));
+    return () => { unsubAuth(); unsubRecovery(); };
   }, []);
 
   // Load the games library once we know who's logged in, and always land on
@@ -101,20 +125,20 @@ export default function App() {
     }
   }
 
-  async function handleDeleteAccount() {
-    const confirmed = confirm(
-      `Permanently delete your account and all ${games.length} game${games.length !== 1 ? 's' : ''}? This cannot be undone.`
+  function handleDeleteAccount() {
+    askConfirm(
+      `Permanently delete your account and all ${games.length} game${games.length !== 1 ? 's' : ''}? This cannot be undone.`,
+      async () => {
+        try {
+          if (window.electronAPI) await window.electronAPI.deleteAccount();
+          setGames([]);
+          setSession(null);
+        } catch (err) {
+          console.error('Delete account failed:', err);
+          showToast('Failed to delete your account. Please try again.', 'error');
+        }
+      }
     );
-    if (!confirmed) return;
-
-    try {
-      if (window.electronAPI) await window.electronAPI.deleteAccount();
-      setGames([]);
-      setSession(null);
-    } catch (err) {
-      console.error('Delete account failed:', err);
-      alert('Failed to delete account — check the console for details.');
-    }
   }
 
   async function loadGames() {
@@ -133,7 +157,7 @@ export default function App() {
     setLoading(false);
   }
 
-  async function handleAddGame(game) {
+  async function addGameNow(game) {
     try {
       let saved;
       if (window.electronAPI) {
@@ -145,6 +169,16 @@ export default function App() {
       setShowAddModal(false);
     } catch (err) {
       console.error('Failed to add game:', err);
+      showToast('Failed to add the game. Please try again.', 'error');
+    }
+  }
+
+  function handleAddGame(game) {
+    const isDuplicate = games.some(g => g.title.toLowerCase() === game.title.toLowerCase());
+    if (isDuplicate) {
+      askConfirm(`"${game.title}" is already in your vault. Add it anyway?`, () => addGameNow(game), { danger: false });
+    } else {
+      addGameNow(game);
     }
   }
 
@@ -164,66 +198,78 @@ export default function App() {
     }
   }
 
-  async function handleDeleteGame(id) {
+  function handleDeleteGame(id) {
+    askConfirm('Remove this game?', async () => {
+      try {
+        if (window.electronAPI) await window.electronAPI.deleteGame(id);
+        setGames(prev => prev.filter(g => g.id !== id));
+        setSelectedGame(null);
+      } catch (err) {
+        console.error('Failed to delete game:', err);
+        showToast('Failed to delete the game. Please try again.', 'error');
+      }
+    });
+  }
+
+  async function runSteamImport(newGames) {
+    setLoading(true);
     try {
-      if (window.electronAPI) await window.electronAPI.deleteGame(id);
-      setGames(prev => prev.filter(g => g.id !== id));
-      setSelectedGame(null);
+      const enrichedGames = await enrichWithHLTB(newGames);
+
+      const saved = [];
+      for (const game of enrichedGames) {
+        if (window.electronAPI) {
+          const s = await window.electronAPI.addGame(game);
+          saved.push(s);
+        } else {
+          saved.push({ id: Date.now() + Math.random(), ...game });
+        }
+      }
+
+      setGames(prev => [...prev, ...saved]);
+      showToast(`Imported ${saved.length} games from Steam!`);
     } catch (err) {
-      console.error('Failed to delete game:', err);
+      console.error('Steam import failed:', err);
+      showToast('Steam import failed. Please try again.', 'error');
+    } finally {
+      setLoading(false);
     }
   }
 
   async function handleImportSteam(apiKey, steamId) {
-  try {
-    const steamGames = await importSteamLibrary(apiKey, steamId);
-    const existingTitles = new Set(games.map(g => g.title.toLowerCase()));
-    const newGames = steamGames.filter(g => !existingTitles.has(g.title.toLowerCase()));
-
-    if (newGames.length === 0) {
-      alert('No new games to import — everything is already in your vault!');
-      return;
-    }
-
-    const confirmed = confirm(`Import ${newGames.length} new games from Steam? (${steamGames.length - newGames.length} already in vault)\n\nThis also looks up completion times, so it may take a bit for a large batch.`);
-    if (!confirmed) return;
-
-    setLoading(true);
-    const enrichedGames = await enrichWithHLTB(newGames);
-
-    const saved = [];
-    for (const game of enrichedGames) {
-      if (window.electronAPI) {
-        const s = await window.electronAPI.addGame(game);
-        saved.push(s);
-      } else {
-        saved.push({ id: Date.now() + Math.random(), ...game });
-      }
-    }
-
-    setGames(prev => [...prev, ...saved]);
-    alert(`✅ Imported ${saved.length} games from Steam!`);
-  } catch (err) {
-    console.error('Steam import failed:', err);
-    alert('Steam import failed — check the console for details.');
-  } finally {
-    setLoading(false);
-  }
-  }
-
-  async function handleDeleteAllGames() {
-    if (games.length === 0) return;
-    const confirmed = confirm(`Delete all ${games.length} games? This cannot be undone.`);
-    if (!confirmed) return;
-
     try {
-      if (window.electronAPI) await window.electronAPI.deleteAllGames();
-      setGames([]);
-      setSelectedGame(null);
+      const steamGames = await importSteamLibrary(apiKey, steamId);
+      const existingTitles = new Set(games.map(g => g.title.toLowerCase()));
+      const newGames = steamGames.filter(g => !existingTitles.has(g.title.toLowerCase()));
+
+      if (newGames.length === 0) {
+        showToast('No new games to import — everything is already in your vault!');
+        return;
+      }
+
+      askConfirm(
+        `Import ${newGames.length} new games from Steam? (${steamGames.length - newGames.length} already in vault)\n\nThis also looks up completion times, so it may take a bit for a large batch.`,
+        () => runSteamImport(newGames),
+        { danger: false }
+      );
     } catch (err) {
-      console.error('Failed to delete all games:', err);
-      alert('Failed to delete all games — check the console for details.');
+      console.error('Steam import failed:', err);
+      showToast('Steam import failed. Please try again.', 'error');
     }
+  }
+
+  function handleDeleteAllGames() {
+    if (games.length === 0) return;
+    askConfirm(`Delete all ${games.length} games? This cannot be undone.`, async () => {
+      try {
+        if (window.electronAPI) await window.electronAPI.deleteAllGames();
+        setGames([]);
+        setSelectedGame(null);
+      } catch (err) {
+        console.error('Failed to delete all games:', err);
+        showToast('Failed to delete your games. Please try again.', 'error');
+      }
+    });
   }
 
   function toggleSelectMode() {
@@ -251,23 +297,22 @@ export default function App() {
       clearSelection();
     } catch (err) {
       console.error('Failed to update selected games:', err);
-      alert('Failed to update selected games — check the console for details.');
+      showToast('Failed to update the selected games. Please try again.', 'error');
     }
   }
 
-  async function handleBulkDelete() {
+  function handleBulkDelete() {
     if (selectedIds.size === 0) return;
-    const confirmed = confirm(`Delete ${selectedIds.size} selected game${selectedIds.size !== 1 ? 's' : ''}? This cannot be undone.`);
-    if (!confirmed) return;
-
-    try {
-      if (window.electronAPI) await window.electronAPI.deleteGames([...selectedIds]);
-      setGames(prev => prev.filter(g => !selectedIds.has(g.id)));
-      clearSelection();
-    } catch (err) {
-      console.error('Failed to delete selected games:', err);
-      alert('Failed to delete selected games — check the console for details.');
-    }
+    askConfirm(`Delete ${selectedIds.size} selected game${selectedIds.size !== 1 ? 's' : ''}? This cannot be undone.`, async () => {
+      try {
+        if (window.electronAPI) await window.electronAPI.deleteGames([...selectedIds]);
+        setGames(prev => prev.filter(g => !selectedIds.has(g.id)));
+        clearSelection();
+      } catch (err) {
+        console.error('Failed to delete selected games:', err);
+        showToast('Failed to delete the selected games. Please try again.', 'error');
+      }
+    });
   }
 
   // Filter + search
@@ -288,6 +333,17 @@ export default function App() {
     acc[s.key] = games.filter(g => g.status === s.key).length;
     return acc;
   }, { all: games.length });
+
+  if (passwordRecovery) {
+    return (
+      <div className="app">
+        <TitleBar />
+        <div className="app-body">
+          <ResetPasswordPage onDone={() => setPasswordRecovery(false)} />
+        </div>
+      </div>
+    );
+  }
 
   if (session === undefined) {
     return (
@@ -331,6 +387,7 @@ export default function App() {
             accentColor={accentColor}
             setAccentColor={setAccentColor}
             onImportSteam={() => setShowSteamModal(true)}
+            onChangePassword={() => setShowPasswordModal(true)}
             onDeleteAll={handleDeleteAllGames}
             gameCount={games.length}
             userEmail={session.user?.email}
@@ -369,6 +426,10 @@ export default function App() {
         />
       )}
 
+      {showPasswordModal && (
+        <ChangePasswordModal onClose={() => setShowPasswordModal(false)} showToast={showToast} />
+      )}
+
       {selectedGame && (
         <GameDetailModal
           game={selectedGame}
@@ -377,6 +438,9 @@ export default function App() {
           onClose={() => setSelectedGame(null)}
         />
       )}
+
+      <Toast toast={toast} onClose={() => setToast(null)} />
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
     </div>
   );
 }

@@ -32,10 +32,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   signOut: ()                => ipcRenderer.invoke('auth:signOut'),
   deleteAccount: ()          => ipcRenderer.invoke('auth:deleteAccount'),
   getSession: ()             => ipcRenderer.invoke('auth:getSession'),
+  resetPassword: (email)        => ipcRenderer.invoke('auth:resetPassword', email),
+  updatePassword: (newPassword) => ipcRenderer.invoke('auth:updatePassword', newPassword),
   onAuthChange: (callback) => {
-    const handler = (_, session) => callback(session);
+    const handler = (_, session, event) => callback(session, event);
     ipcRenderer.on('auth:changed', handler);
     return () => ipcRenderer.removeListener('auth:changed', handler);
+  },
+  onPasswordRecovery: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on('auth:passwordRecovery', handler);
+    return () => ipcRenderer.removeListener('auth:passwordRecovery', handler);
   },
 
   // Window controls — macOS keeps its native traffic lights (titleBarStyle),

@@ -99,8 +99,8 @@ function createWindow() {
 
 // Keeps the renderer's auth state in sync with the actual Supabase session —
 // covers login, logout, and silent token refreshes.
-auth.onAuthStateChange((session) => {
-  mainWindow?.webContents.send('auth:changed', session);
+auth.onAuthStateChange((event, session) => {
+  mainWindow?.webContents.send('auth:changed', session, event);
 });
 
 // ─── Deep linking (gamevault://) ───────────────────────────────────────────
@@ -128,11 +128,22 @@ async function handleAuthDeepLink(url) {
     const accessToken = hashParams.get('access_token');
     const refreshToken = hashParams.get('refresh_token');
     const code = parsed.searchParams.get('code');
+    // Supabase includes this regardless of client config — 'recovery' for a
+    // password-reset link, 'signup' for email confirmation, etc. We rely on
+    // this instead of Supabase's own PASSWORD_RECOVERY auth event, since
+    // that event only fires from its own browser-URL detection, which is
+    // disabled here (detectSessionInUrl: false — there's no URL bar in
+    // Electron, we parse the link ourselves).
+    const isRecovery = hashParams.get('type') === 'recovery' || parsed.searchParams.get('type') === 'recovery';
 
     if (accessToken && refreshToken) {
       await auth.setSessionFromTokens(accessToken, refreshToken);
     } else if (code) {
       await auth.exchangeCodeForSession(code);
+    }
+
+    if (isRecovery) {
+      mainWindow?.webContents.send('auth:passwordRecovery');
     }
   } catch (err) {
     console.error('Failed to complete sign-in from email link:', err);
@@ -217,6 +228,8 @@ ipcMain.handle('auth:signIn', (_, email, password) => auth.signIn(email, passwor
 ipcMain.handle('auth:signOut', () => auth.signOut());
 ipcMain.handle('auth:deleteAccount', () => auth.deleteAccount());
 ipcMain.handle('auth:getSession', () => auth.getSession());
+ipcMain.handle('auth:resetPassword', (_, email) => auth.resetPasswordForEmail(email));
+ipcMain.handle('auth:updatePassword', (_, newPassword) => auth.updatePassword(newPassword));
 
 ipcMain.on('window:minimize', (event) => {
   BrowserWindow.fromWebContents(event.sender)?.minimize();

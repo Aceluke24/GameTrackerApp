@@ -20,7 +20,7 @@ export default function AddGameModal({ onAdd, onClose }) {
       setResults(data);
       if (data.length === 0) setError('No games found. Try a different search.');
     } catch (err) {
-      setError('IGDB search failed. Check your API keys in src/api/igdb.js, or add the game manually.');
+      setError('Couldn’t reach IGDB — check your internet connection, or add the game manually below.');
     }
     setSearching(false);
   }

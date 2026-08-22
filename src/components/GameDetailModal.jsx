@@ -189,7 +189,7 @@ export default function GameDetailModal({ game, onUpdate, onDelete, onClose }) {
             <div className="form-actions">
               {editing
                 ? <><button className="btn-primary" onClick={handleSave}>Save</button><button className="btn-ghost" onClick={() => setEditing(false)}>Cancel</button></>
-                : <><button className="btn-primary" onClick={() => setEditing(true)}>Edit</button><button className="btn-danger" onClick={() => { if (confirm('Remove this game?')) onDelete(game.id); }}>Delete</button></>
+                : <><button className="btn-primary" onClick={() => setEditing(true)}>Edit</button><button className="btn-danger" onClick={() => onDelete(game.id)}>Delete</button></>
               }
             </div>
           </div>

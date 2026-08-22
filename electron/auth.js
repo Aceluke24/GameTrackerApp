@@ -1,9 +1,31 @@
 const supabase = require('./supabaseClient');
 
+// Supabase's raw auth error text is written for developers, not end users
+// (e.g. "User with this information (email address, phone number) cannot be
+// created again."). It exposes a stable `error.code` alongside that message
+// (see https://supabase.com/docs/guides/auth/debugging/error-codes) — this
+// translates the ones this app can actually hit into plain language. Do this
+// here, in the main process, while the full error object (with .code) is
+// still available — only the message string survives crossing the IPC
+// boundary to the renderer, so any translation has to happen before that.
+const FRIENDLY_AUTH_ERRORS = {
+  invalid_credentials: 'Incorrect email or password.',
+  user_already_exists: 'An account with that email already exists — try signing in instead.',
+  email_exists: 'An account with that email already exists — try signing in instead.',
+  email_not_confirmed: 'Please confirm your email before signing in — check your inbox for the confirmation link.',
+  email_address_invalid: 'Please enter a valid email address.',
+  weak_password: 'That password is too weak — try a longer or more complex one.',
+  same_password: 'That’s already your current password — please choose a different one.',
+  over_email_send_rate_limit: 'Too many emails sent to that address recently — please wait a bit before trying again.',
+  over_request_rate_limit: 'Too many attempts — please wait a bit and try again.',
+  validation_failed: 'Please check the information you entered and try again.',
+};
+
 // See database.js's check() — Supabase errors are plain objects and lose
 // their message crossing the IPC boundary unless wrapped in a real Error.
 function check(error) {
-  if (error) throw new Error(error.message || JSON.stringify(error));
+  if (!error) return;
+  throw new Error(FRIENDLY_AUTH_ERRORS[error.code] || error.message || JSON.stringify(error));
 }
 
 async function signUp(email, password) {
@@ -50,6 +72,28 @@ async function deleteAccount() {
   return { success: true };
 }
 
+// Sends Supabase's "Reset your password" email. Clicking that link goes
+// through the same gamevault:// deep link as email confirmation, but
+// Supabase fires a PASSWORD_RECOVERY auth event for it instead of SIGNED_IN
+// so the renderer knows to show the "set a new password" screen rather than
+// just dropping the user into their library.
+async function resetPasswordForEmail(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'gamevault://auth-callback',
+  });
+  check(error);
+  return { success: true };
+}
+
+// Called once the user's landed back in the app via the recovery link (a
+// valid session already exists at this point) to actually set the new
+// password they typed in.
+async function updatePassword(newPassword) {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  check(error);
+  return { success: true };
+}
+
 async function getSession() {
   const { data, error } = await supabase.auth.getSession();
   check(error);
@@ -71,13 +115,16 @@ async function exchangeCodeForSession(code) {
   check(error);
 }
 
-// Lets main.js forward login/logout/token-refresh events to the renderer.
+// Lets main.js forward login/logout/token-refresh/recovery events to the
+// renderer — event is one of Supabase's auth event names (SIGNED_IN,
+// SIGNED_OUT, TOKEN_REFRESHED, PASSWORD_RECOVERY, ...).
 function onAuthStateChange(callback) {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => callback(session));
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => callback(event, session));
   return () => subscription.unsubscribe();
 }
 
 module.exports = {
   signUp, signIn, signOut, deleteAccount, getSession, onAuthStateChange,
   setSessionFromTokens, exchangeCodeForSession,
+  resetPasswordForEmail, updatePassword,
 };

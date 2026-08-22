@@ -43,6 +43,9 @@
 .btn-ghost:hover { color: var(--text); }
 .btn-danger { background: transparent; color: var(--accent2); border-radius: 8px; padding: 9px 18px; font-size: 14px; border: 1px solid var(--accent2); margin-left: auto; transition: background 0.15s; }
 .btn-danger:hover { background: rgba(var(--accent2-rgb), 0.1); }
+.btn-confirm-danger { background: var(--accent2); color: white; border-radius: 8px; padding: 9px 18px; font-size: 14px; font-weight: 600; transition: opacity 0.15s; }
+.btn-confirm-danger:hover { opacity: 0.85; }
+.confirm-message { font-size: 14px; color: var(--text); line-height: 1.5; white-space: pre-line; }
 .detail-body { flex-direction: row !important; gap: 24px !important; align-items: flex-start; }
 .detail-cover { flex-shrink: 0; width: 160px; }
 .detail-cover img, .detail-cover-placeholder { width: 160px; height: 220px; object-fit: cover; border-radius: 10px; }

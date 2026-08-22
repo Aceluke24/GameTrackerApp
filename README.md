@@ -7,11 +7,15 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 ### Accounts & Sync
 - Sign up / sign in with email + password, powered by Supabase Auth — shown as a tabbed toggle so it's clear at a glance which mode you're in
 - Confirming your email brings you straight back into the app via deep link (`gamevault://`), not a dead browser tab
+- "Forgot password?" on the Sign In tab sends a reset email — clicking it deep-links back into the app to a dedicated "set a new password" screen (with a "Skip and Sign In" option if you'd rather not change it after all)
+- Change your password any time from Settings, without needing the email flow
 - Each account's library is private, enforced by Postgres Row Level Security (not just app-level filtering)
 - Your library syncs across every device you're signed into — no more per-device local database
 - Logging in always lands on the games view, regardless of which page you were on when you last signed out
+- Errors and confirmations use in-app toasts and dialogs instead of native browser popups, with plain-language wording for common cases (wrong password, reusing your old password, duplicate accounts, etc.) instead of raw technical error text
 
 ### Game Tracking
+- Duplicate detection warns before adding a game that's already in your vault, whether added manually or via Steam import
 - Track games by status (Backlog, Playing, Finished, Play Again, Abandoned, Wishlist, Live Service)
 - Search by title, platform, or genre — one search bar, no separate filter UI
 - Editable genre tags per game, picked from a curated list matching IGDB's taxonomy
@@ -23,7 +27,7 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 - IGDB access tokens auto-refresh in the background — no manual token regeneration every ~60 days
 
 ### Settings & Customization
-- Settings page — account info, sign out, account deletion, delete-all, and appearance controls
+- Settings page — account info, change password, sign out, account deletion, delete-all, and appearance controls
 - Light/dark mode, plus independent Main (background) and Accent color pickers (5 x 6 presets, hand-tuned for both modes)
 
 ## Stack
@@ -115,17 +119,22 @@ game-vault/
 ├── src/
 │   ├── api/
 │   │   ├── igdb.js       ← IGDB game search + time to beat, with cache read-through
-│   │   └── steam.js      ← Steam library import
+│   │   ├── steam.js      ← Steam library import
+│   │   └── errors.js     ← Strips Electron's IPC error boilerplate for display
 │   ├── components/
 │   │   ├── TitleBar        ← Custom window title bar
 │   │   ├── Sidebar         ← Navigation + status filters
 │   │   ├── GameGrid        ← Main game card grid + search bar
-│   │   ├── LoginPage        ← Sign up / sign in screen
+│   │   ├── LoginPage        ← Sign up / sign in screen + forgot password
+│   │   ├── ResetPasswordPage ← Set a new password after clicking the recovery link
 │   │   ├── AddGameModal     ← Search IGDB + add game
 │   │   ├── GameDetailModal  ← View/edit game details + genres
 │   │   ├── SteamImportModal ← Per-user Steam credentials + import trigger
+│   │   ├── ChangePasswordModal ← Change password from Settings
+│   │   ├── Toast            ← In-app success/error notifications
+│   │   ├── ConfirmDialog    ← In-app replacement for native confirm()
 │   │   ├── StatsPage        ← Backlog stats + recommendation
-│   │   └── SettingsPage     ← Account, account deletion, delete-all, theme/color pickers
+│   │   └── SettingsPage     ← Account, password, account deletion, delete-all, theme/color pickers
 │   ├── App.jsx         ← Root component, auth gating, state management
 │   ├── theme.js        ← Main/Accent color presets
 │   └── styles.css      ← Global CSS variables + base styles
@@ -152,16 +161,15 @@ it's most reliable to test this against a packaged build (`npm run dist`) instea
 ## Roadmap
 
 ### Up next
-1. **Password reset** — a "Forgot password" flow. Right now there's no way to recover a forgotten password short of deleting and recreating the account.
-2. **Data export/backup** — let a user export their own library (CSV/JSON) as a personal backup, independent of whatever happens to the app's Supabase project.
-3. **Duplicate detection on manual "Add Game"** — Steam import already checks for existing titles before importing; the manual add-game search doesn't.
-4. **Sorting options** — currently hardcoded to alphabetical (`App.jsx`). Add sort by completion time, rating, and a time-range filter (e.g. "under/over X hours").
-5. **"Next Up" queue** — a small marker/checkbox per game that pins it to the top of the list, so it's easy to see what's up next. Only applies to the default view — an active sort or search takes priority over the pin.
-6. **Offline/network-failure handling** — a deliberate look at what happens when Supabase or IGDB is unreachable, rather than relying on whatever falls out of the existing try/catch + `alert()` pattern.
+1. **Data export/backup** — let a user export their own library (CSV/JSON) as a personal backup, independent of whatever happens to the app's Supabase project.
+2. **Sorting options** — currently hardcoded to alphabetical (`App.jsx`). Add sort by completion time, rating, and a time-range filter (e.g. "under/over X hours").
+3. **"Next Up" queue** — a small marker/checkbox per game that pins it to the top of the list, so it's easy to see what's up next. Only applies to the default view — an active sort or search takes priority over the pin.
+4. **Offline/network-failure handling** — a deliberate look at what happens when Supabase or IGDB is unreachable (e.g. a clear "you're offline" state), rather than relying on whatever falls out of the existing try/catch + generic error toast.
 
 ### Possible future ideas
 - **Price-drop / wishlist tracking** — notify when a Wishlist game drops in price, similar to Opera GX's deal-finder. Needs a new external data source (e.g. CheapShark or IsThereAnyDeal's API) — a genuinely new integration, not an extension of anything already here.
 - **Local-only guest mode** — a "Continue without an account" option that falls back to a local SQLite database (no sync, no login), for anyone who'd rather not create an account. Would mean maintaining two parallel data-layer implementations (Supabase + SQLite) and re-adding `better-sqlite3` as a native dependency.
+- **Custom SMTP provider for auth emails** — Supabase's default email sender caps out at 2 auth emails/hour (shared across signup, password reset, etc.), which is fine for personal/small-group use but could get annoying. Configuring a provider like Resend or SendGrid in the dashboard raises that limit if it ever becomes a problem.
 
 ---
 

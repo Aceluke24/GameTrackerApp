@@ -3,7 +3,7 @@ import './SettingsPage.css';
 
 export default function SettingsPage({
   theme, onToggleTheme, mainColor, setMainColor, accentColor, setAccentColor,
-  onImportSteam, onDeleteAll, gameCount, userEmail, onSignOut, onDeleteAccount,
+  onImportSteam, onChangePassword, onDeleteAll, gameCount, userEmail, onSignOut, onDeleteAccount,
 }) {
   return (
     <div className="settings-page">
@@ -20,6 +20,13 @@ export default function SettingsPage({
             <p className="settings-row-desc">{userEmail}</p>
           </div>
           <button className="settings-action-btn" onClick={onSignOut}>Sign Out</button>
+        </div>
+        <div className="settings-row">
+          <div>
+            <p className="settings-row-title">Password</p>
+            <p className="settings-row-desc">Change your account password.</p>
+          </div>
+          <button className="settings-action-btn" onClick={onChangePassword}>Change Password</button>
         </div>
       </div>
 
