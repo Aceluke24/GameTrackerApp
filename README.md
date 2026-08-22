@@ -3,17 +3,26 @@
 Your personal game backlog tracker — a desktop app built with Electron + React + Supabase, with your own account and library synced across every device you install it on.
 
 ## Features
-- Accounts — sign up / sign in with email + password, powered by Supabase Auth. Each account's library is private, enforced by Postgres Row Level Security (not just app-level filtering). Sign In/Sign Up are shown as a tabbed toggle so it's clear at a glance which mode you're in
+
+### Accounts & Sync
+- Sign up / sign in with email + password, powered by Supabase Auth — shown as a tabbed toggle so it's clear at a glance which mode you're in
+- Each account's library is private, enforced by Postgres Row Level Security (not just app-level filtering)
 - Your library syncs across every device you're signed into — no more per-device local database
+- Logging in always lands on the games view, regardless of which page you were on when you last signed out
+
+### Game Tracking
 - Track games by status (Backlog, Playing, Finished, Play Again, Abandoned, Wishlist, Live Service)
 - Search by title, platform, or genre — one search bar, no separate filter UI
 - Editable genre tags per game, picked from a curated list matching IGDB's taxonomy
 - Stats dashboard — backlog time remaining, completion rate, genre/platform breakdown, a random "what to play" recommendation
+
+### Steam & IGDB Integration
 - Steam library import, enriched with HowLongToBeat completion times via IGDB — each account uses its own Steam API key + Steam ID (entered via a popup on Import, saved to Settings for next time), never one shared key
 - Shared IGDB metadata cache — completion-time/rating lookups are cached in Supabase and reused across all users, so the same game isn't re-fetched from IGDB every time someone adds it
 - IGDB access tokens auto-refresh in the background — no manual token regeneration every ~60 days
+
+### Settings & Customization
 - Settings page — account info, sign out, account deletion, delete-all, and appearance controls
-- Logging in always lands on the games view, regardless of which page you were on when you last signed out
 - Light/dark mode, plus independent Main (background) and Accent color pickers (5 x 6 presets, hand-tuned for both modes)
 
 ## Stack
