@@ -1,7 +1,13 @@
 .login-page { flex: 1; display: flex; align-items: center; justify-content: center; background: var(--bg); }
-.login-card { width: 360px; max-width: calc(100vw - 40px); background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; display: flex; flex-direction: column; }
-.login-title { font-size: 22px; font-weight: 700; color: var(--text); text-align: center; }
-.login-sub { font-size: 13px; color: var(--muted); text-align: center; margin: 6px 0 20px; }
+.login-card { width: 360px; max-width: calc(100vw - 40px); background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; display: flex; flex-direction: column; transition: border-color 0.15s, box-shadow 0.15s; }
+.login-card-signup { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.login-title { font-size: 22px; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 16px; }
+
+.login-tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: 10px; padding: 4px; margin-bottom: 16px; }
+.login-tab { flex: 1; padding: 8px 0; border-radius: 7px; font-size: 13px; font-weight: 600; color: var(--muted); background: none; transition: background 0.15s, color 0.15s; }
+.login-tab:hover:not(.active) { color: var(--text); }
+.login-tab.active { background: var(--accent); color: white; }
+.login-tab.active:hover { color: white; }
+
+.login-sub { font-size: 13px; color: var(--muted); text-align: center; margin: 0 0 20px; }
 .login-info { font-size: 12px; color: var(--accent); }
-.login-switch { margin-top: 16px; background: transparent; color: var(--muted); font-size: 13px; text-align: center; }
-.login-switch:hover { color: var(--text); }

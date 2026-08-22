@@ -41,18 +41,37 @@ export default function LoginPage({ onAuthed }) {
     }
   }
 
-  function switchMode() {
-    setMode(m => (m === 'signUp' ? 'signIn' : 'signUp'));
+  function switchMode(newMode) {
+    if (newMode === mode) return;
+    setMode(newMode);
     setError('');
     setInfo('');
   }
 
   return (
     <div className="login-page">
-      <div className="login-card">
+      <div className={`login-card login-card-${mode === 'signUp' ? 'signup' : 'signin'}`}>
         <h1 className="login-title">Game Vault</h1>
+
+        <div className="login-tabs">
+          <button
+            type="button"
+            className={`login-tab ${mode === 'signIn' ? 'active' : ''}`}
+            onClick={() => switchMode('signIn')}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            className={`login-tab ${mode === 'signUp' ? 'active' : ''}`}
+            onClick={() => switchMode('signUp')}
+          >
+            Sign Up
+          </button>
+        </div>
+
         <p className="login-sub">
-          {mode === 'signUp' ? 'Create an account to sync your library everywhere.' : 'Sign in to see your library.'}
+          {mode === 'signUp' ? 'Create an account to save your library and access it from any device.' : 'Sign in to load your library.'}
         </p>
 
         <form className="add-form" onSubmit={handleSubmit}>
@@ -85,10 +104,6 @@ export default function LoginPage({ onAuthed }) {
             </button>
           </div>
         </form>
-
-        <button type="button" className="login-switch" onClick={switchMode}>
-          {mode === 'signUp' ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-        </button>
       </div>
     </div>
   );

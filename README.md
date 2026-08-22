@@ -3,7 +3,7 @@
 Your personal game backlog tracker — a desktop app built with Electron + React + Supabase, with your own account and library synced across every device you install it on.
 
 ## Features
-- Accounts — sign up / sign in with email + password, powered by Supabase Auth. Each account's library is private, enforced by Postgres Row Level Security (not just app-level filtering)
+- Accounts — sign up / sign in with email + password, powered by Supabase Auth. Each account's library is private, enforced by Postgres Row Level Security (not just app-level filtering). Sign In/Sign Up are shown as a tabbed toggle so it's clear at a glance which mode you're in
 - Your library syncs across every device you're signed into — no more per-device local database
 - Track games by status (Backlog, Playing, Finished, Play Again, Abandoned, Wishlist, Live Service)
 - Search by title, platform, or genre — one search bar, no separate filter UI
@@ -127,6 +127,7 @@ game-vault/
 
 ## Roadmap / known limitations
 - **Email confirmation redirect** — Supabase's confirmation email currently links to a blank `localhost` page instead of back into the app; sign-in still works manually afterward, but the redirect needs a proper landing page or deep link.
+- **Possible: local-only guest mode** — a "Continue without an account" option that falls back to a local SQLite database (no sync, no login), for anyone who'd rather not create an account. Would mean maintaining two parallel data-layer implementations (Supabase + SQLite) and re-adding `better-sqlite3` as a native dependency — not started yet, just an idea worth considering.
 
 ---
 
