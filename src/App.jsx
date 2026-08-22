@@ -6,6 +6,7 @@ import SettingsPage from './components/SettingsPage';
 import LoginPage from './components/LoginPage';
 import AddGameModal from './components/AddGameModal';
 import GameDetailModal from './components/GameDetailModal';
+import SteamImportModal from './components/SteamImportModal';
 import TitleBar from './components/TitleBar';
 import './App.css';
 import { importSteamLibrary, enrichWithHLTB } from './api/steam';
@@ -37,6 +38,7 @@ export default function App() {
   const [view, setView] = useState('games');
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSteamModal, setShowSteamModal] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [loading, setLoading] = useState(true);
   // undefined = still checking for an existing session, null = logged out,
@@ -172,9 +174,9 @@ export default function App() {
     }
   }
 
-  async function handleImportSteam() {
+  async function handleImportSteam(apiKey, steamId) {
   try {
-    const steamGames = await importSteamLibrary();
+    const steamGames = await importSteamLibrary(apiKey, steamId);
     const existingTitles = new Set(games.map(g => g.title.toLowerCase()));
     const newGames = steamGames.filter(g => !existingTitles.has(g.title.toLowerCase()));
 
@@ -328,7 +330,7 @@ export default function App() {
             setMainColor={setMainColor}
             accentColor={accentColor}
             setAccentColor={setAccentColor}
-            onImportSteam={handleImportSteam}
+            onImportSteam={() => setShowSteamModal(true)}
             onDeleteAll={handleDeleteAllGames}
             gameCount={games.length}
             userEmail={session.user?.email}
@@ -357,6 +359,13 @@ export default function App() {
         <AddGameModal
           onAdd={handleAddGame}
           onClose={() => setShowAddModal(false)}
+        />
+      )}
+
+      {showSteamModal && (
+        <SteamImportModal
+          onImport={handleImportSteam}
+          onClose={() => setShowSteamModal(false)}
         />
       )}
 

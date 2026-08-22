@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 
 const isDev = process.env.NODE_ENV !== 'production';
@@ -128,6 +128,9 @@ ipcMain.handle('igdb:getToken', async () => ({
 ipcMain.handle('igdb:getCached', (_, igdbId) => db.getCachedIgdbGame(igdbId));
 ipcMain.handle('igdb:setCached', (_, entry) => db.setCachedIgdbGame(entry));
 
+ipcMain.handle('userSettings:get', () => db.getUserSettings());
+ipcMain.handle('userSettings:set', (_, fields) => db.setUserSettings(fields));
+
 ipcMain.handle('auth:signUp', (_, email, password) => auth.signUp(email, password));
 ipcMain.handle('auth:signIn', (_, email, password) => auth.signIn(email, password));
 ipcMain.handle('auth:signOut', () => auth.signOut());
@@ -147,4 +150,12 @@ ipcMain.on('window:close', (event) => {
 });
 ipcMain.handle('window:isMaximized', (event) => {
   return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false;
+});
+
+// Opens links in the system browser instead of navigating the app's own
+// window. Restricted to https:// so a stray non-URL string can't do
+// anything unexpected (e.g. a file:// or javascript: scheme).
+ipcMain.handle('shell:openExternal', (_, url) => {
+  if (!/^https:\/\//.test(url)) return;
+  return shell.openExternal(url);
 });

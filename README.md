@@ -9,10 +9,10 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 - Search by title, platform, or genre — one search bar, no separate filter UI
 - Editable genre tags per game, picked from a curated list matching IGDB's taxonomy
 - Stats dashboard — backlog time remaining, completion rate, genre/platform breakdown, a random "what to play" recommendation
-- Steam library import, enriched with HowLongToBeat completion times via IGDB
+- Steam library import, enriched with HowLongToBeat completion times via IGDB — each account uses its own Steam API key + Steam ID (entered via a popup on Import, saved to Settings for next time), never one shared key
 - Shared IGDB metadata cache — completion-time/rating lookups are cached in Supabase and reused across all users, so the same game isn't re-fetched from IGDB every time someone adds it
 - IGDB access tokens auto-refresh in the background — no manual token regeneration every ~60 days
-- Settings page — account info, sign out, account deletion, Steam import, delete-all, and appearance controls
+- Settings page — account info, sign out, account deletion, delete-all, and appearance controls
 - Logging in always lands on the games view, regardless of which page you were on when you last signed out
 - Light/dark mode, plus independent Main (background) and Accent color pickers (5 x 6 presets, hand-tuned for both modes)
 
@@ -45,17 +45,17 @@ gets committed.
 ### 3. Set up Supabase (free tier)
 1. Create a project at https://supabase.com/dashboard
 2. From the project's **Connect** dialog, grab your **Project URL** and **anon/publishable key**, and add them to `.env` as `SUPABASE_URL` and `SUPABASE_ANON_KEY`
-3. Run the schema against your project (creates the `games` and `igdb_cache` tables, Row Level Security policies, table grants, and a self-service account-deletion function):
+3. Run the schema against your project (creates the `games`, `igdb_cache`, and `user_settings` tables, Row Level Security policies, table grants, and a self-service account-deletion function):
 ```bash
 psql "<your Postgres connection string from Connect → Session pooler>" -f supabase/migrations/0001_init.sql
 psql "<same connection string>" -f supabase/migrations/0002_grants.sql
 psql "<same connection string>" -f supabase/migrations/0003_delete_own_account.sql
+psql "<same connection string>" -f supabase/migrations/0004_user_settings.sql
 ```
    (Only needed once per Supabase project — not required for every developer machine, just whoever's setting up that project.)
 
 ### 4. (Optional) Get your Steam API key
-1. Go to https://steamcommunity.com/dev/apikey
-2. Open `src/api/steam.js` and paste your key + Steam ID
+Not required for setup — each user pastes their own key + Steam ID into the app itself (via the popup on Settings → Import Steam), which links directly to https://steamcommunity.com/dev/apikey and https://store.steampowered.com/account/ to help you find both.
 
 ---
 
@@ -91,7 +91,7 @@ game-vault/
 ├── electron/
 │   ├── main.js          ← Electron entry point, window creation, IPC handlers
 │   ├── preload.js       ← Secure bridge between React and Node.js
-│   ├── database.js      ← All Supabase queries (games + IGDB cache) live here
+│   ├── database.js      ← All Supabase queries (games, IGDB cache, user settings) live here
 │   ├── auth.js          ← Supabase Auth wrapper (sign up/in/out, session)
 │   ├── supabaseClient.js ← Main-process-only Supabase client
 │   └── secureStore.js   ← Encrypted local store — auth session + cached IGDB token
@@ -112,8 +112,9 @@ game-vault/
 │   │   ├── LoginPage        ← Sign up / sign in screen
 │   │   ├── AddGameModal     ← Search IGDB + add game
 │   │   ├── GameDetailModal  ← View/edit game details + genres
+│   │   ├── SteamImportModal ← Per-user Steam credentials + import trigger
 │   │   ├── StatsPage        ← Backlog stats + recommendation
-│   │   └── SettingsPage     ← Account, Steam import, delete-all, theme/color pickers
+│   │   └── SettingsPage     ← Account, account deletion, delete-all, theme/color pickers
 │   ├── App.jsx         ← Root component, auth gating, state management
 │   ├── theme.js        ← Main/Accent color presets
 │   └── styles.css      ← Global CSS variables + base styles
@@ -126,7 +127,6 @@ game-vault/
 
 ## Roadmap / known limitations
 - **Email confirmation redirect** — Supabase's confirmation email currently links to a blank `localhost` page instead of back into the app; sign-in still works manually afterward, but the redirect needs a proper landing page or deep link.
-- **Steam import isn't per-user yet** — the Steam API key and Steam ID are currently hardcoded in `src/api/steam.js` (one personal account), so importing only works for whoever's key is pasted in there. Needs to move into Settings as a per-user input instead.
 
 ---
 

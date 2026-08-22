@@ -1,7 +1,5 @@
 import { searchIGDB, pickBestMatch } from './igdb';
 
-const STEAM_API_KEY = '636C7B0417BED2E115C18B24C76E20C6';
-const STEAM_ID = '76561198050985648';
 const STEAM_BASE = import.meta.env.DEV ? '/steam' : 'https://api.steampowered.com';
 
 // Not every app has a library_600x900 portrait capsule (only backfilled for newer
@@ -11,8 +9,14 @@ export function getSteamCoverFallback(coverUrl) {
   return coverUrl.replace('/library_600x900.jpg', '/header.jpg');
 }
 
-export async function importSteamLibrary() {
-  const url = `${STEAM_BASE}/IPlayerService/GetOwnedGames/v1/?key=${STEAM_API_KEY}&steamid=${STEAM_ID}&include_appinfo=true&format=json`;
+// apiKey/steamId are each user's own Steam credentials (saved in Settings,
+// stored per-account in Supabase) rather than one key shared by everyone.
+export async function importSteamLibrary(apiKey, steamId) {
+  if (!apiKey || !steamId) {
+    throw new Error('Add your Steam API key and Steam ID in Settings before importing.');
+  }
+
+  const url = `${STEAM_BASE}/IPlayerService/GetOwnedGames/v1/?key=${apiKey}&steamid=${steamId}&include_appinfo=true&format=json`;
 
   const response = await fetch(url);
   if (!response.ok) throw new Error('Steam API error — check your API key and Steam ID');

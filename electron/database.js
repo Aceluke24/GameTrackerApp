@@ -88,9 +88,25 @@ async function setCachedIgdbGame(entry) {
   return { success: true };
 }
 
+// Per-user settings (currently just each account's own Steam credentials) —
+// see supabase/migrations/0004_user_settings.sql. user_id defaults to
+// auth.uid() at the database level, so it's never sent from the client.
+async function getUserSettings() {
+  const { data, error } = await supabase.from('user_settings').select('steam_api_key, steam_id').maybeSingle();
+  check(error);
+  return data ?? { steam_api_key: null, steam_id: null };
+}
+
+async function setUserSettings(fields) {
+  const { error } = await supabase.from('user_settings').upsert(fields, { onConflict: 'user_id' });
+  check(error);
+  return { success: true };
+}
+
 module.exports = {
   getAllGames, addGame, updateGame, deleteGame, deleteAllGames,
   updateGamesStatus, deleteGames, searchGames,
   getSetting, setSetting,
   getCachedIgdbGame, setCachedIgdbGame,
+  getUserSettings, setUserSettings,
 };

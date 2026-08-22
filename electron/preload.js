@@ -21,6 +21,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCachedIgdbGame: (igdbId) => ipcRenderer.invoke('igdb:getCached', igdbId),
   setCachedIgdbGame: (entry) => ipcRenderer.invoke('igdb:setCached', entry),
 
+  getUserSettings: () => ipcRenderer.invoke('userSettings:get'),
+  setUserSettings: (fields) => ipcRenderer.invoke('userSettings:set', fields),
+
   // Account auth — main process holds the Supabase session; the renderer
   // triggers sign-in/out and gets notified of session changes (login,
   // logout, silent token refresh) via onAuthChange.
@@ -43,6 +46,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   toggleMaximizeWindow: () => ipcRenderer.send('window:toggleMaximize'),
   closeWindow: () => ipcRenderer.send('window:close'),
   isWindowMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   onMaximizeChange: (callback) => {
     const handler = (_, isMaximized) => callback(isMaximized);
     ipcRenderer.on('window:maximizeChanged', handler);
