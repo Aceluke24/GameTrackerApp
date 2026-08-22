@@ -4,6 +4,14 @@ const path = require('path');
 
 const isDev = process.env.NODE_ENV !== 'production';
 const appIconPath = path.join(__dirname, isDev ? '../public' : '../dist', 'icons8-closed-treasure-chest-96.png');
+const PROTOCOL = 'gamevault';
+
+// Only one instance should run — if the email-confirmation link launches a
+// second one (because the app was already open), hand its URL to this
+// instance instead of opening a redundant window.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+}
 
 app.setName('Game Vault');
 // Keep the on-disk data folder pinned to its original location so renaming
@@ -95,11 +103,84 @@ auth.onAuthStateChange((session) => {
   mainWindow?.webContents.send('auth:changed', session);
 });
 
+// ─── Deep linking (gamevault://) ───────────────────────────────────────────
+// Lets Supabase's "Confirm your email" link bring the user straight back
+// into the running app instead of a dead browser tab. Packaged builds
+// register the scheme automatically via the `protocols` entry in
+// package.json's build config; dev mode needs the extra args below so the
+// OS knows to relaunch through Electron with this script.
+if (isDev) {
+  if (process.platform === 'darwin') {
+    app.setAsDefaultProtocolClient(PROTOCOL);
+  } else {
+    app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [path.resolve(process.argv[1])]);
+  }
+} else {
+  app.setAsDefaultProtocolClient(PROTOCOL);
+}
+
+let pendingDeepLinkUrl = null;
+
+async function handleAuthDeepLink(url) {
+  try {
+    const parsed = new URL(url);
+    const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ''));
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    const code = parsed.searchParams.get('code');
+
+    if (accessToken && refreshToken) {
+      await auth.setSessionFromTokens(accessToken, refreshToken);
+    } else if (code) {
+      await auth.exchangeCodeForSession(code);
+    }
+  } catch (err) {
+    console.error('Failed to complete sign-in from email link:', err);
+  }
+
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+}
+
+function urlFromArgv(argv) {
+  return argv.find(arg => arg.startsWith(`${PROTOCOL}://`));
+}
+
+// macOS: fires when the app is opened (or already running) via the custom
+// scheme — can fire before the window exists, so queue it in that case.
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  if (mainWindow) handleAuthDeepLink(url);
+  else pendingDeepLinkUrl = url;
+});
+
+// Windows/Linux: a second launch passes the URL as a plain argv entry
+// instead of firing 'open-url'.
+app.on('second-instance', (_event, argv) => {
+  const url = urlFromArgv(argv);
+  if (url) handleAuthDeepLink(url);
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
 app.whenReady().then(() => {
   if (process.platform === 'darwin' && app.dock) {
     app.dock.setIcon(appIconPath);
   }
   createWindow();
+
+  if (pendingDeepLinkUrl) {
+    handleAuthDeepLink(pendingDeepLinkUrl);
+    pendingDeepLinkUrl = null;
+  }
+  // Windows/Linux cold start via the protocol link (not already running).
+  const argvUrl = urlFromArgv(process.argv);
+  if (argvUrl) handleAuthDeepLink(argvUrl);
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

@@ -7,7 +7,14 @@ function check(error) {
 }
 
 async function signUp(email, password) {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    // Brings the user straight back into the running app when they click
+    // the confirmation link, instead of a dead browser tab — see the
+    // gamevault:// handling in main.js.
+    options: { emailRedirectTo: 'gamevault://auth-callback' },
+  });
   check(error);
   return data.session;
 }
@@ -49,10 +56,28 @@ async function getSession() {
   return data.session;
 }
 
+// Called from the gamevault:// deep link handler in main.js once the
+// confirmation email's redirect hands back tokens (implicit-flow style, in
+// the URL fragment).
+async function setSessionFromTokens(accessToken, refreshToken) {
+  const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+  check(error);
+}
+
+// Fallback for the PKCE-style redirect (a `?code=` param instead of tokens
+// in the fragment), in case that's what a given Supabase project uses.
+async function exchangeCodeForSession(code) {
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  check(error);
+}
+
 // Lets main.js forward login/logout/token-refresh events to the renderer.
 function onAuthStateChange(callback) {
   const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => callback(session));
   return () => subscription.unsubscribe();
 }
 
-module.exports = { signUp, signIn, signOut, deleteAccount, getSession, onAuthStateChange };
+module.exports = {
+  signUp, signIn, signOut, deleteAccount, getSession, onAuthStateChange,
+  setSessionFromTokens, exchangeCodeForSession,
+};

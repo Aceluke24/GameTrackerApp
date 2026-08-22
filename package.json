@@ -30,6 +30,10 @@
     "directories": {
       "output": "release"
     },
+    "protocols": {
+      "name": "Game Vault",
+      "schemes": ["gamevault"]
+    },
     "files": [
       "dist/**/*",
       "electron/**/*",

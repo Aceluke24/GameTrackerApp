@@ -6,6 +6,7 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 
 ### Accounts & Sync
 - Sign up / sign in with email + password, powered by Supabase Auth — shown as a tabbed toggle so it's clear at a glance which mode you're in
+- Confirming your email brings you straight back into the app via deep link (`gamevault://`), not a dead browser tab
 - Each account's library is private, enforced by Postgres Row Level Security (not just app-level filtering)
 - Your library syncs across every device you're signed into — no more per-device local database
 - Logging in always lands on the games view, regardless of which page you were on when you last signed out
@@ -62,6 +63,7 @@ psql "<same connection string>" -f supabase/migrations/0003_delete_own_account.s
 psql "<same connection string>" -f supabase/migrations/0004_user_settings.sql
 ```
    (Only needed once per Supabase project — not required for every developer machine, just whoever's setting up that project.)
+4. In the dashboard, go to **Authentication → URL Configuration → Redirect URLs** and add `gamevault://auth-callback`. This is what lets the "Confirm your email" link bring you back into the app directly (see Deep Linking below) instead of a dead browser tab.
 
 ### 4. (Optional) Get your Steam API key
 Not required for setup — each user pastes their own key + Steam ID into the app itself (via the popup on Settings → Import Steam), which links directly to https://steamcommunity.com/dev/apikey and https://store.steampowered.com/account/ to help you find both.
@@ -134,8 +136,20 @@ game-vault/
 
 ---
 
+## Deep Linking
+Confirming your email brings you straight back into the running app via a custom `gamevault://` URL
+scheme, instead of leaving you on a browser tab. `electron/main.js` registers the scheme (automatic for
+packaged builds via the `protocols` entry in `package.json`; dev mode needs the app relaunched through
+Electron manually, handled there too) and hands off to `electron/auth.js` to establish the session from
+the tokens Supabase includes in the redirect.
+
+**Note for dev mode:** `npm run dev` starts a fresh process each time, and OS-level protocol registration
+can be flaky against a moving dev binary — if clicking the email link doesn't bring the app to the front,
+it's most reliable to test this against a packaged build (`npm run dist`) instead.
+
+---
+
 ## Roadmap / known limitations
-- **Email confirmation redirect** — Supabase's confirmation email currently links to a blank `localhost` page instead of back into the app; sign-in still works manually afterward, but the redirect needs a proper landing page or deep link.
 - **Possible: local-only guest mode** — a "Continue without an account" option that falls back to a local SQLite database (no sync, no login), for anyone who'd rather not create an account. Would mean maintaining two parallel data-layer implementations (Supabase + SQLite) and re-adding `better-sqlite3` as a native dependency — not started yet, just an idea worth considering.
 
 ---
