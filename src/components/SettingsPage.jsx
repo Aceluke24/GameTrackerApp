@@ -3,7 +3,7 @@ import './SettingsPage.css';
 
 export default function SettingsPage({
   theme, onToggleTheme, mainColor, setMainColor, accentColor, setAccentColor,
-  onImportSteam, onChangePassword, onDeleteAll, gameCount, userEmail, onSignOut, onDeleteAccount,
+  onImportSteam, onExportLibrary, onChangePassword, onDeleteAll, gameCount, userEmail, onSignOut, onDeleteAccount,
 }) {
   return (
     <div className="settings-page">
@@ -93,6 +93,16 @@ export default function SettingsPage({
           <button className="settings-action-btn" onClick={onImportSteam}>
             <span>🎮</span> Import Steam
           </button>
+        </div>
+        <div className="settings-row">
+          <div>
+            <p className="settings-row-title">Export Library</p>
+            <p className="settings-row-desc">Download a personal backup of all {gameCount} game{gameCount !== 1 ? 's' : ''}, independent of your account.</p>
+          </div>
+          <div className="settings-btn-group">
+            <button className="settings-action-btn" onClick={() => onExportLibrary('json')}>Export JSON</button>
+            <button className="settings-action-btn" onClick={() => onExportLibrary('csv')}>Export CSV</button>
+          </div>
         </div>
       </div>
 

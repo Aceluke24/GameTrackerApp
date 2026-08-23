@@ -1,6 +1,7 @@
 require('dotenv').config();
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs/promises');
 
 const isDev = process.env.NODE_ENV !== 'production';
 const appIconPath = path.join(__dirname, isDev ? '../public' : '../dist', 'icons8-closed-treasure-chest-96.png');
@@ -252,4 +253,17 @@ ipcMain.handle('window:isMaximized', (event) => {
 ipcMain.handle('shell:openExternal', (_, url) => {
   if (!/^https:\/\//.test(url)) return;
   return shell.openExternal(url);
+});
+
+// Native "Save As" dialog for exporting the library — content is prepared
+// entirely in the renderer (CSV/JSON string); this just handles the file
+// picker and the actual disk write.
+ipcMain.handle('file:save', async (event, content, defaultFilename) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const { canceled, filePath } = await dialog.showSaveDialog(win, {
+    defaultPath: path.join(app.getPath('downloads'), defaultFilename),
+  });
+  if (canceled || !filePath) return { canceled: true };
+  await fs.writeFile(filePath, content, 'utf-8');
+  return { canceled: false, filePath };
 });

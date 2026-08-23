@@ -14,6 +14,7 @@ import ConfirmDialog from './components/ConfirmDialog';
 import TitleBar from './components/TitleBar';
 import './App.css';
 import { importSteamLibrary, enrichWithHLTB } from './api/steam';
+import { gamesToCSV, gamesToJSON, saveExportFile } from './api/export';
 import { applyColorScheme } from './theme';
 
 // Matches IGDB's genre taxonomy so manually picked genres line up with
@@ -293,6 +294,22 @@ export default function App() {
     }
   }
 
+  async function handleExportLibrary(format) {
+    if (games.length === 0) {
+      showToast('Your vault is empty — nothing to export.', 'error');
+      return;
+    }
+    try {
+      const content = format === 'csv' ? gamesToCSV(games) : gamesToJSON(games);
+      const date = new Date().toISOString().slice(0, 10);
+      const saved = await saveExportFile(content, `game-vault-export-${date}.${format}`);
+      if (saved) showToast(`Exported ${games.length} games as ${format.toUpperCase()}.`);
+    } catch (err) {
+      console.error('Export failed:', err);
+      showToast('Export failed. Please try again.', 'error');
+    }
+  }
+
   function handleDeleteAllGames() {
     if (games.length === 0) return;
     askConfirm(`Delete all ${games.length} games? This cannot be undone.`, async () => {
@@ -427,6 +444,7 @@ export default function App() {
             accentColor={accentColor}
             setAccentColor={setAccentColor}
             onImportSteam={() => setShowSteamModal(true)}
+            onExportLibrary={handleExportLibrary}
             onChangePassword={() => setShowPasswordModal(true)}
             onDeleteAll={handleDeleteAllGames}
             gameCount={games.length}

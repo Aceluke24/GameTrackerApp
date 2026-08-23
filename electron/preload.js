@@ -54,6 +54,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeWindow: () => ipcRenderer.send('window:close'),
   isWindowMaximized: () => ipcRenderer.invoke('window:isMaximized'),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  saveFile: (content, defaultFilename) => ipcRenderer.invoke('file:save', content, defaultFilename),
   onMaximizeChange: (callback) => {
     const handler = (_, isMaximized) => callback(isMaximized);
     ipcRenderer.on('window:maximizeChanged', handler);
