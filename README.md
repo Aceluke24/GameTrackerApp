@@ -162,9 +162,8 @@ it's most reliable to test this against a packaged build (`npm run dist`) instea
 
 ### Up next
 1. **Data export/backup** — let a user export their own library (CSV/JSON) as a personal backup, independent of whatever happens to the app's Supabase project.
-2. **Sorting options** — currently hardcoded to alphabetical (`App.jsx`). Add sort by completion time, rating, and a time-range filter (e.g. "under/over X hours").
-3. **"Next Up" queue** — a small marker/checkbox per game that pins it to the top of the list, so it's easy to see what's up next. Only applies to the default view — an active sort or search takes priority over the pin.
-4. **Offline/network-failure handling** — a deliberate look at what happens when Supabase or IGDB is unreachable (e.g. a clear "you're offline" state), rather than relying on whatever falls out of the existing try/catch + generic error toast.
+2. **"Next Up" queue** — a small marker/checkbox per game that pins it to the top of the list, so it's easy to see what's up next. Only applies to the default view — an active sort or search takes priority over the pin.
+3. **Offline/network-failure handling** — a deliberate look at what happens when Supabase or IGDB is unreachable (e.g. a clear "you're offline" state), rather than relying on whatever falls out of the existing try/catch + generic error toast.
 
 ### Possible future ideas
 - **Price-drop / wishlist tracking** — notify when a Wishlist game drops in price, similar to Opera GX's deal-finder. Needs a new external data source (e.g. CheapShark or IsThereAnyDeal's API) — a genuinely new integration, not an extension of anything already here.

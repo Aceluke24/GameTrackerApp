@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { formatTime } from '../api/igdb';
 import { getSteamCoverFallback } from '../api/steam';
-import { STATUSES } from '../App';
+import { STATUSES, SORT_OPTIONS } from '../App';
 import './GameGrid.css';
 
 export default function GameGrid({
-  games, loading, search, setSearch, onSelect,
+  games, loading, search, setSearch, sort, setSort, timeFilter, setTimeFilter, onSelect,
   selectMode, selectedIds, onToggleSelectMode, onToggleSelectGame, onBulkStatusChange, onBulkDelete, onClearSelection,
 }) {
   if (loading) return <div className="grid-empty"><div className="spinner" /></div>;
@@ -17,6 +17,12 @@ export default function GameGrid({
           <input type="text" placeholder="Search title, platform, or genre..." value={search} onChange={e => setSearch(e.target.value)} />
           {search && <button className="search-clear" onClick={() => setSearch('')}>✕</button>}
         </div>
+        <select className="sort-select" value={sort} onChange={e => setSort(e.target.value)} aria-label="Sort games">
+          {SORT_OPTIONS.map(o => (
+            <option key={o.key} value={o.key}>{o.label}</option>
+          ))}
+        </select>
+        <TimeFilterControl timeFilter={timeFilter} setTimeFilter={setTimeFilter} />
         <span className="grid-count">{games.length} game{games.length !== 1 ? 's' : ''}</span>
         <button className={`select-mode-btn ${selectMode ? 'active' : ''}`} onClick={onToggleSelectMode}>
           {selectMode ? 'Cancel' : 'Select'}
@@ -113,6 +119,69 @@ function GameCard({ game, onSelect, selectMode, selected, onToggleSelectGame }) 
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function TimeFilterControl({ timeFilter, setTimeFilter }) {
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState(timeFilter?.mode || 'under');
+  const [hours, setHours] = useState(timeFilter?.hours ?? '');
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  function openPopover() {
+    setMode(timeFilter?.mode || 'under');
+    setHours(timeFilter?.hours ?? '');
+    setOpen(o => !o);
+  }
+
+  function handleApply(e) {
+    e.preventDefault();
+    const h = Number(hours);
+    if (!hours || h <= 0) return;
+    setTimeFilter({ mode, hours: h });
+    setOpen(false);
+  }
+
+  function handleClear() {
+    setTimeFilter(null);
+    setOpen(false);
+  }
+
+  return (
+    <div className="time-filter" ref={ref}>
+      <button className={`time-filter-btn ${timeFilter ? 'active' : ''}`} onClick={openPopover}>
+        🗡 {timeFilter ? `${timeFilter.mode === 'under' ? 'Under' : 'Over'} ${timeFilter.hours}h` : 'Time'}
+      </button>
+      {timeFilter && <button className="search-clear" onClick={handleClear} title="Clear time filter">✕</button>}
+      {open && (
+        <form className="time-filter-popover" onSubmit={handleApply}>
+          <div className="time-filter-mode">
+            <button type="button" className={mode === 'under' ? 'active' : ''} onClick={() => setMode('under')}>Less than</button>
+            <button type="button" className={mode === 'over' ? 'active' : ''} onClick={() => setMode('over')}>More than</button>
+          </div>
+          <div className="time-filter-input">
+            <input
+              type="number"
+              min="1"
+              placeholder="Hours"
+              value={hours}
+              onChange={e => setHours(e.target.value)}
+              autoFocus
+            />
+            <span>hours</span>
+          </div>
+          <button type="submit" className="time-filter-apply">Apply</button>
+        </form>
+      )}
     </div>
   );
 }

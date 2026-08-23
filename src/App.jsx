@@ -26,6 +26,34 @@ export const GENRES = [
   'Sport', 'Strategy', 'Tactical', 'Turn-based strategy (TBS)', 'Visual Novel',
 ];
 
+// Sorts a field low-to-high (or high-to-low with reverse). Games with no
+// value (null/undefined) are treated as the lowest possible value, so they
+// land at whichever end actually represents "low" for the chosen direction
+// instead of always sinking to the bottom.
+function byField(field, reverse) {
+  return (a, b) => {
+    const av = a[field] ?? -Infinity;
+    const bv = b[field] ?? -Infinity;
+    return (reverse ? bv - av : av - bv) || a.title.localeCompare(b.title);
+  };
+}
+
+export const SORT_OPTIONS = [
+  { key: 'title_asc', label: 'Title (A–Z)' },
+  { key: 'title_desc', label: 'Title (Z–A)' },
+  { key: 'time_asc', label: 'Time to Beat (Short–Long)' },
+  { key: 'time_desc', label: 'Time to Beat (Long–Short)' },
+  { key: 'date_added_desc', label: 'Recently Added' },
+];
+
+export const SORT_COMPARATORS = {
+  title_asc: (a, b) => a.title.localeCompare(b.title),
+  title_desc: (a, b) => b.title.localeCompare(a.title),
+  time_asc: byField('hltb_main', false),
+  time_desc: byField('hltb_main', true),
+  date_added_desc: (a, b) => (b.date_added || '').localeCompare(a.date_added || '') || a.title.localeCompare(b.title),
+};
+
 export const STATUSES = [
   { key: 'backlog',    label: 'Backlog',       emoji: '📦' },
   { key: 'playing',   label: 'Playing',        emoji: '🎮' },
@@ -41,6 +69,9 @@ export default function App() {
   const [filter, setFilter] = useState('all');
   const [view, setView] = useState('games');
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState(() => localStorage.getItem('sort') || 'title_asc');
+  // null = no filter, otherwise { mode: 'under' | 'over', hours: number }
+  const [timeFilter, setTimeFilter] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSteamModal, setShowSteamModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -80,6 +111,10 @@ export default function App() {
   function toggleTheme() {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   }
+
+  useEffect(() => {
+    localStorage.setItem('sort', sort);
+  }, [sort]);
 
   // Check for an existing (or newly-changing) Supabase session. In a plain
   // browser preview without Electron there's no auth to check — fall back to
@@ -324,9 +359,14 @@ export default function App() {
         || g.title.toLowerCase().includes(query)
         || (g.platform || '').toLowerCase().includes(query)
         || (g.genres || '').toLowerCase().includes(query);
-      return matchesFilter && matchesSearch;
+      const matchesTime = !timeFilter || (g.hltb_main != null && (
+        timeFilter.mode === 'under'
+          ? g.hltb_main < timeFilter.hours * 60
+          : g.hltb_main > timeFilter.hours * 60
+      ));
+      return matchesFilter && matchesSearch && matchesTime;
     })
-    .sort((a, b) => a.title.localeCompare(b.title));
+    .sort(SORT_COMPARATORS[sort] || SORT_COMPARATORS.title_asc);
 
   // Count per status for sidebar badges
   const counts = STATUSES.reduce((acc, s) => {
@@ -400,6 +440,10 @@ export default function App() {
             loading={loading}
             search={search}
             setSearch={setSearch}
+            sort={sort}
+            setSort={setSort}
+            timeFilter={timeFilter}
+            setTimeFilter={setTimeFilter}
             onSelect={setSelectedGame}
             selectMode={selectMode}
             selectedIds={selectedIds}
