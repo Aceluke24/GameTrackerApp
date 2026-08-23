@@ -18,6 +18,7 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 - Duplicate detection warns before adding a game that's already in your vault, whether added manually or via Steam import
 - Track games by status (Backlog, Playing, Finished, Play Again, Abandoned, Wishlist, Live Service)
 - Search by title, platform, or genre — one search bar, no separate filter UI
+- Sort by title, time-to-beat, or recently added, plus a quick time-range filter (under/over X hours) — both live in the grid header, which stays pinned to the top as you scroll
 - Editable genre tags per game, picked from a curated list matching IGDB's taxonomy
 - Stats dashboard — backlog time remaining, completion rate, genre/platform breakdown, a random "what to play" recommendation
 
@@ -28,6 +29,7 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 
 ### Settings & Customization
 - Settings page — account info, change password, sign out, account deletion, delete-all, and appearance controls
+- Export your library as JSON or CSV — a personal backup independent of your Supabase account
 - Light/dark mode, plus independent Main (background) and Accent color pickers (5 x 6 presets, hand-tuned for both modes)
 
 ## Stack
