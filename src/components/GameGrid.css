@@ -1,5 +1,5 @@
-.game-grid-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; padding: 20px; gap: 16px; }
-.grid-header { display: flex; align-items: center; gap: 16px; }
+.game-grid-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; padding: 0 20px 20px; gap: 16px; }
+.grid-header { display: flex; align-items: center; gap: 16px; position: sticky; top: 0; padding: 20px 0 18px; background: var(--bg); z-index: 20; box-shadow: 0 12px 16px -10px rgba(0,0,0,0.35); }
 .search-bar { flex: 1; display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0 14px; height: 42px; transition: border-color 0.15s; }
 .search-bar:focus-within { border-color: var(--accent); }
 .search-icon { font-size: 18px; color: var(--muted); }
