@@ -1,0 +1,5 @@
+.emoji-picker-scrim { position: fixed; inset: 0; z-index: 92; }
+.emoji-picker-anchor { position: fixed; z-index: 93; overflow-y: auto; animation: fadeIn 0.12s ease; }
+.emoji-picker { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px; width: 288px; max-width: calc(100vw - 32px); box-shadow: 0 16px 40px rgba(0,0,0,0.4); }
+.emoji-picker-btn { width: 32px; height: 32px; font-size: 17px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: background 0.1s; }
+.emoji-picker-btn:hover { background: var(--surface2); }

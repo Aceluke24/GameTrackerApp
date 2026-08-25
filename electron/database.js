@@ -103,10 +103,26 @@ async function setUserSettings(fields) {
   return { success: true };
 }
 
+// Custom status slots — see supabase/migrations/0006_user_statuses.sql. Null
+// means the user has no row yet (never customized anything), so the caller
+// falls back to the built-in default set.
+async function getUserStatuses() {
+  const { data, error } = await supabase.from('user_statuses').select('statuses').maybeSingle();
+  check(error);
+  return data?.statuses ?? null;
+}
+
+async function setUserStatuses(statuses) {
+  const { error } = await supabase.from('user_statuses').upsert({ statuses, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  check(error);
+  return { success: true };
+}
+
 module.exports = {
   getAllGames, addGame, updateGame, deleteGame, deleteAllGames,
   updateGamesStatus, deleteGames, searchGames,
   getSetting, setSetting,
   getCachedIgdbGame, setCachedIgdbGame,
   getUserSettings, setUserSettings,
+  getUserStatuses, setUserStatuses,
 };

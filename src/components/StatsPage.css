@@ -92,13 +92,6 @@
 
 .bar-pct { width: 36px; font-size: 11px; color: var(--muted); text-align: right; flex-shrink: 0; }
 
-.status-bar-backlog    { background: var(--status-backlog); }
-.status-bar-playing    { background: var(--status-playing); }
-.status-bar-live_service { background: var(--status-live_service); }
-.status-bar-finished   { background: var(--status-finished); }
-.status-bar-want_again { background: var(--status-want_again); }
-.status-bar-abandoned  { background: var(--status-abandoned); }
-.status-bar-wishlist   { background: var(--status-wishlist); }
 .bar-fill-accent  { background: var(--accent); }
 .bar-fill-success { background: var(--success); }
 

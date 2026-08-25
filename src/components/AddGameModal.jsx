@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { searchIGDB, formatTime } from '../api/igdb';
-import { STATUSES } from '../App';
 import './Modal.css';
 
-export default function AddGameModal({ onAdd, onClose }) {
+export default function AddGameModal({ statuses, onAdd, onClose }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -86,7 +85,7 @@ export default function AddGameModal({ onAdd, onClose }) {
               <div className="form-field">
                 <label>Status</label>
                 <select className="field-input field-select" value={status} onChange={e => setStatus(e.target.value)}>
-                  {STATUSES.map(s => <option key={s.key} value={s.key}>{s.emoji} {s.label}</option>)}
+                  {statuses.map(s => <option key={s.key} value={s.key}>{s.emoji} {s.label}</option>)}
                 </select>
               </div>
             </div>

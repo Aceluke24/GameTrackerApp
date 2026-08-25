@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatTime } from '../api/igdb';
-import { STATUSES } from '../App';
 import './StatsPage.css';
 
 const MINUTES_PER_DAY_PLAYED = 120;
@@ -53,7 +52,7 @@ function pickWeighted(scored, excludeId) {
   return candidates[candidates.length - 1];
 }
 
-export default function StatsPage({ games }) {
+export default function StatsPage({ games, statuses }) {
   const scoredBacklog = useMemo(() => scoreBacklog(games), [games]);
   const [recommendation, setRecommendation] = useState(null);
 
@@ -185,7 +184,7 @@ export default function StatsPage({ games }) {
         <div className="stats-section stats-section-half">
           <h2>By Status</h2>
           <div className="status-bars">
-            {STATUSES.map(s => {
+            {statuses.map(s => {
               const count = games.filter(g => g.status === s.key).length;
               const pct = stats.total > 0 ? (count / stats.total) * 100 : 0;
               return (
@@ -195,7 +194,7 @@ export default function StatsPage({ games }) {
                     <span className="mono">{count}</span>
                   </div>
                   <div className="bar-track">
-                    <div className={`bar-fill status-bar-${s.key}`} style={{ width: `${pct}%` }} />
+                    <div className="bar-fill" style={{ width: `${pct}%`, background: s.color }} />
                   </div>
                   <span className="bar-pct mono">{Math.round(pct)}%</span>
                 </div>

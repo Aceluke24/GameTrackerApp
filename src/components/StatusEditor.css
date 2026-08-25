@@ -1,0 +1,16 @@
+.status-editor { display: flex; flex-direction: column; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; width: 340px; max-width: calc(100vw - 32px); max-height: 100%; overflow-y: auto; box-shadow: 0 16px 40px rgba(0,0,0,0.4); }
+.status-editor-header { display: flex; align-items: center; justify-content: space-between; }
+.status-editor-header h3 { font-size: 14px; font-weight: 600; color: var(--text); }
+.status-editor-close { background: transparent; color: var(--muted); font-size: 12px; padding: 4px 6px; border-radius: 6px; }
+.status-editor-close:hover { color: var(--text); background: var(--surface2); }
+.status-editor-desc { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
+.status-editor-rows { display: flex; flex-direction: column; gap: 8px; }
+.status-editor-row { display: flex; align-items: center; gap: 8px; }
+.status-emoji-input { width: 44px; text-align: center; padding: 0 4px; flex-shrink: 0; }
+.status-label-input { flex: 1; }
+.status-clear-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 8px; width: 34px; height: 34px; flex-shrink: 0; font-size: 12px; transition: color 0.15s, border-color 0.15s; }
+.status-clear-btn:hover:not(:disabled) { color: var(--accent2); border-color: var(--accent2); }
+.status-clear-btn:disabled { opacity: 0.35; cursor: default; }
+.status-save-btn { background: var(--accent); color: white; border-radius: 8px; padding: 9px 0; font-size: 13px; font-weight: 600; transition: opacity 0.15s; position: sticky; bottom: 0; }
+.status-save-btn:hover:not(:disabled) { opacity: 0.9; }
+.status-save-btn:disabled { opacity: 0.6; cursor: default; }

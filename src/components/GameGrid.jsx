@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { formatTime } from '../api/igdb';
 import { getSteamCoverFallback } from '../api/steam';
-import { STATUSES, SORT_OPTIONS } from '../App';
+import { SORT_OPTIONS } from '../App';
 import './GameGrid.css';
 
 export default function GameGrid({
-  games, loading, search, setSearch, sort, setSort, timeFilter, setTimeFilter, onSelect,
+  games, loading, search, setSearch, sort, setSort, timeFilter, setTimeFilter, onSelect, onToggleNextUp, statuses,
   selectMode, selectedIds, onToggleSelectMode, onToggleSelectGame, onBulkStatusChange, onBulkDelete, onClearSelection,
 }) {
   if (loading) return <div className="grid-empty"><div className="spinner" /></div>;
@@ -40,7 +40,9 @@ export default function GameGrid({
             <GameCard
               key={game.id}
               game={game}
+              statuses={statuses}
               onSelect={onSelect}
+              onToggleNextUp={onToggleNextUp}
               selectMode={selectMode}
               selected={selectedIds?.has(game.id)}
               onToggleSelectGame={onToggleSelectGame}
@@ -57,7 +59,7 @@ export default function GameGrid({
             onChange={e => onBulkStatusChange(e.target.value)}
           >
             <option value="" disabled>Set status…</option>
-            {STATUSES.map(s => (
+            {statuses.map(s => (
               <option key={s.key} value={s.key}>{s.emoji} {s.label}</option>
             ))}
           </select>
@@ -69,8 +71,8 @@ export default function GameGrid({
   );
 }
 
-function GameCard({ game, onSelect, selectMode, selected, onToggleSelectGame }) {
-  const status = STATUSES.find(s => s.key === game.status);
+function GameCard({ game, statuses, onSelect, onToggleNextUp, selectMode, selected, onToggleSelectGame }) {
+  const status = statuses.find(s => s.key === game.status);
   const [coverSrc, setCoverSrc] = useState(game.cover_url);
 
   function handleClick() {
@@ -78,13 +80,26 @@ function GameCard({ game, onSelect, selectMode, selected, onToggleSelectGame }) 
     else onSelect(game);
   }
 
+  function handlePinClick(e) {
+    e.stopPropagation();
+    onToggleNextUp(game);
+  }
+
   return (
-    <div className={`game-card ${selectMode ? 'selectable' : ''} ${selected ? 'selected' : ''}`} onClick={handleClick}>
+    <div className={`game-card ${selectMode ? 'selectable' : ''} ${selected ? 'selected' : ''} ${game.next_up ? 'next-up' : ''}`} onClick={handleClick}>
       <div className="card-cover">
-        {selectMode && (
+        {selectMode ? (
           <div className="card-checkbox">
             <input type="checkbox" checked={!!selected} readOnly />
           </div>
+        ) : (
+          <button
+            className={`card-pin ${game.next_up ? 'active' : ''}`}
+            onClick={handlePinClick}
+            title={game.next_up ? 'Remove from Next Up' : 'Mark as Next Up'}
+          >
+            🔥
+          </button>
         )}
         {coverSrc
           ? <img
@@ -94,6 +109,7 @@ function GameCard({ game, onSelect, selectMode, selected, onToggleSelectGame }) 
             />
           : <div className="cover-placeholder"><span>{game.title[0]}</span></div>
         }
+        {game.next_up && <div className="card-nextup-badge">🔥 Next Up</div>}
         <div className="card-status-badge">{status?.emoji} {status?.label}</div>
       </div>
       <div className="card-info">

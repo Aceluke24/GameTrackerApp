@@ -39,6 +39,11 @@ function byField(field, reverse) {
   };
 }
 
+// The sort the "Next Up" pin applies under — an explicitly chosen sort or an
+// active search means the user is looking for something specific, so the pin
+// backs off rather than fighting that ordering.
+const DEFAULT_SORT = 'title_asc';
+
 export const SORT_OPTIONS = [
   { key: 'title_asc', label: 'Title (A–Z)' },
   { key: 'title_desc', label: 'Title (Z–A)' },
@@ -55,18 +60,35 @@ export const SORT_COMPARATORS = {
   date_added_desc: (a, b) => (b.date_added || '').localeCompare(a.date_added || '') || a.title.localeCompare(b.title),
 };
 
-export const STATUSES = [
-  { key: 'backlog',    label: 'Backlog',       emoji: '📦' },
-  { key: 'playing',   label: 'Playing',        emoji: '🎮' },
-  { key: 'live_service', label: 'Live Service', emoji: '♾️' },
-  { key: 'finished',  label: 'Finished',       emoji: '✅' },
-  { key: 'want_again',label: 'Play Again',     emoji: '🔁' },
-  { key: 'abandoned', label: 'Abandoned',      emoji: '💀' },
-  { key: 'wishlist',  label: 'Wishlist',       emoji: '⭐' },
+// 12 fixed slots (label + emoji editable per user, see SettingsPage's status
+// editor). `key` is what actually gets written to games.status and never
+// changes after this seed — only the display label/emoji do — so renaming a
+// status is a pure display change, never a data migration. `backlog` is the
+// one key that's guaranteed to always exist: it's the fallback a slot's
+// games get reassigned to when that slot is cleared, and it can't itself be
+// cleared. The 5 trailing slots start blank for users to fill in themselves.
+export const DEFAULT_STATUSES = [
+  { key: 'backlog',      label: 'Backlog',      emoji: '📦' },
+  { key: 'playing',      label: 'Playing',       emoji: '🎮' },
+  { key: 'live_service', label: 'Live Service',  emoji: '♾️' },
+  { key: 'finished',     label: 'Finished',      emoji: '✅' },
+  { key: 'want_again',   label: 'Play Again',    emoji: '🔁' },
+  { key: 'abandoned',    label: 'Abandoned',     emoji: '💀' },
+  { key: 'wishlist',     label: 'Wishlist',      emoji: '⭐' },
+  { key: 'custom_1',     label: '',              emoji: '' },
+  { key: 'custom_2',     label: '',              emoji: '' },
+  { key: 'custom_3',     label: '',              emoji: '' },
+  { key: 'custom_4',     label: '',              emoji: '' },
+  { key: 'custom_5',     label: '',              emoji: '' },
 ];
+
+// The one slot that can never be cleared — every game's status falls back
+// to it when its own slot is removed, so it must always exist.
+export const LOCKED_STATUS_KEY = 'backlog';
 
 export default function App() {
   const [games, setGames] = useState([]);
+  const [statuses, setStatuses] = useState(DEFAULT_STATUSES);
   const [filter, setFilter] = useState('all');
   const [view, setView] = useState('games');
   const [search, setSearch] = useState('');
@@ -145,6 +167,7 @@ export default function App() {
   useEffect(() => {
     if (session) {
       loadGames();
+      loadStatuses();
       if (!wasLoggedInRef.current) setView('games');
     }
     wasLoggedInRef.current = !!session;
@@ -157,6 +180,7 @@ export default function App() {
       console.error('Sign out failed:', err);
     } finally {
       setGames([]);
+      setStatuses(DEFAULT_STATUSES);
       setSession(null);
     }
   }
@@ -168,6 +192,7 @@ export default function App() {
         try {
           if (window.electronAPI) await window.electronAPI.deleteAccount();
           setGames([]);
+          setStatuses(DEFAULT_STATUSES);
           setSession(null);
         } catch (err) {
           console.error('Delete account failed:', err);
@@ -191,6 +216,17 @@ export default function App() {
       console.error('Failed to load games:', err);
     }
     setLoading(false);
+  }
+
+  async function loadStatuses() {
+    try {
+      if (window.electronAPI) {
+        const saved = await window.electronAPI.getUserStatuses();
+        setStatuses(saved ?? DEFAULT_STATUSES);
+      }
+    } catch (err) {
+      console.error('Failed to load statuses:', err);
+    }
   }
 
   async function addGameNow(game) {
@@ -324,6 +360,37 @@ export default function App() {
     });
   }
 
+  function handleToggleNextUp(game) {
+    handleUpdateGame(game.id, { next_up: !game.next_up });
+  }
+
+  // Any slot that went from a real label to blank is being "removed" — its
+  // games fall back to Backlog rather than being left pointing at a status
+  // that no longer shows up anywhere in the UI.
+  async function handleUpdateStatuses(newStatuses) {
+    const removedKeys = statuses
+      .filter(old => old.label && !newStatuses.find(s => s.key === old.key)?.label)
+      .map(s => s.key);
+
+    try {
+      if (window.electronAPI) await window.electronAPI.setUserStatuses(newStatuses);
+      setStatuses(newStatuses);
+
+      if (removedKeys.length > 0) {
+        const affectedIds = games.filter(g => removedKeys.includes(g.status)).map(g => g.id);
+        if (affectedIds.length > 0) {
+          if (window.electronAPI) await window.electronAPI.updateGamesStatus(affectedIds, LOCKED_STATUS_KEY);
+          setGames(prev => prev.map(g => removedKeys.includes(g.status) ? { ...g, status: LOCKED_STATUS_KEY } : g));
+        }
+        if (removedKeys.includes(filter)) setFilter('all');
+      }
+      showToast('Statuses saved.');
+    } catch (err) {
+      console.error('Failed to update statuses:', err);
+      showToast('Failed to save your statuses. Please try again.', 'error');
+    }
+  }
+
   function toggleSelectMode() {
     setSelectMode(prev => !prev);
     setSelectedIds(new Set());
@@ -369,6 +436,7 @@ export default function App() {
 
   // Filter + search
   const query = search.trim().toLowerCase();
+  const pinActive = sort === DEFAULT_SORT && !query;
   const filtered = games
     .filter(g => {
       const matchesFilter = filter === 'all' || g.status === filter;
@@ -383,10 +451,24 @@ export default function App() {
       ));
       return matchesFilter && matchesSearch && matchesTime;
     })
-    .sort(SORT_COMPARATORS[sort] || SORT_COMPARATORS.title_asc);
+    .sort((a, b) => {
+      if (pinActive) {
+        const pinDiff = (b.next_up ? 1 : 0) - (a.next_up ? 1 : 0);
+        if (pinDiff) return pinDiff;
+      }
+      return (SORT_COMPARATORS[sort] || SORT_COMPARATORS.title_asc)(a, b);
+    });
+
+  // Blank slots don't show up anywhere outside the status editor itself.
+  // Each status carries a CSS var keyed to its fixed slot position (not its
+  // key/label, which the user can change freely) so status colors stay
+  // stable across renames.
+  const activeStatuses = statuses
+    .map((s, i) => ({ ...s, color: `var(--status-color-${i + 1})` }))
+    .filter(s => s.label);
 
   // Count per status for sidebar badges
-  const counts = STATUSES.reduce((acc, s) => {
+  const counts = activeStatuses.reduce((acc, s) => {
     acc[s.key] = games.filter(g => g.status === s.key).length;
     return acc;
   }, { all: games.length });
@@ -431,10 +513,13 @@ export default function App() {
           view={view}
           setView={setView}
           counts={counts}
+          statuses={activeStatuses}
+          allStatuses={statuses}
+          onUpdateStatuses={handleUpdateStatuses}
           onAddGame={() => setShowAddModal(true)}
         />
         {view === 'stats' ? (
-          <StatsPage games={games} />
+          <StatsPage games={games} statuses={activeStatuses} />
         ) : view === 'settings' ? (
           <SettingsPage
             theme={theme}
@@ -463,6 +548,8 @@ export default function App() {
             timeFilter={timeFilter}
             setTimeFilter={setTimeFilter}
             onSelect={setSelectedGame}
+            onToggleNextUp={handleToggleNextUp}
+            statuses={activeStatuses}
             selectMode={selectMode}
             selectedIds={selectedIds}
             onToggleSelectMode={toggleSelectMode}
@@ -476,6 +563,7 @@ export default function App() {
 
       {showAddModal && (
         <AddGameModal
+          statuses={activeStatuses}
           onAdd={handleAddGame}
           onClose={() => setShowAddModal(false)}
         />
@@ -495,6 +583,7 @@ export default function App() {
       {selectedGame && (
         <GameDetailModal
           game={selectedGame}
+          statuses={activeStatuses}
           onUpdate={handleUpdateGame}
           onDelete={handleDeleteGame}
           onClose={() => setSelectedGame(null)}

@@ -24,6 +24,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getUserSettings: () => ipcRenderer.invoke('userSettings:get'),
   setUserSettings: (fields) => ipcRenderer.invoke('userSettings:set', fields),
 
+  getUserStatuses: () => ipcRenderer.invoke('userStatuses:get'),
+  setUserStatuses: (statuses) => ipcRenderer.invoke('userStatuses:set', statuses),
+
   // Account auth — main process holds the Supabase session; the renderer
   // triggers sign-in/out and gets notified of session changes (login,
   // logout, silent token refresh) via onAuthChange.

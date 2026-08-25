@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { formatTime, refreshFromIGDB } from '../api/igdb';
 import { getSteamCoverFallback } from '../api/steam';
-import { STATUSES, GENRES } from '../App';
+import { GENRES } from '../App';
 import './Modal.css';
 
 const MANUAL_CONFIDENCE = -1;
@@ -11,7 +11,7 @@ const hoursToMinutes = hours => {
   return Number.isFinite(n) && n > 0 ? Math.round(n * 60) : null;
 };
 
-export default function GameDetailModal({ game, onUpdate, onDelete, onClose }) {
+export default function GameDetailModal({ game, statuses, onUpdate, onDelete, onClose }) {
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState(game.status);
   const [rating, setRating] = useState(game.personal_rating ?? '');
@@ -75,7 +75,7 @@ export default function GameDetailModal({ game, onUpdate, onDelete, onClose }) {
     setEditing(false);
   }
 
-  const currentStatus = STATUSES.find(s => s.key === (editing ? status : game.status));
+  const currentStatus = statuses.find(s => s.key === (editing ? status : game.status));
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -127,9 +127,9 @@ export default function GameDetailModal({ game, onUpdate, onDelete, onClose }) {
               <span className="detail-label">Status</span>
               {editing
                 ? <select className="field-input field-select field-sm" value={status} onChange={e => setStatus(e.target.value)}>
-                    {STATUSES.map(s => <option key={s.key} value={s.key}>{s.emoji} {s.label}</option>)}
+                    {statuses.map(s => <option key={s.key} value={s.key}>{s.emoji} {s.label}</option>)}
                   </select>
-                : <span className={`status-pill status-${game.status}`}>{currentStatus?.emoji} {currentStatus?.label}</span>
+                : <span className="status-pill" style={{ color: currentStatus?.color, borderColor: currentStatus?.color }}>{currentStatus?.emoji} {currentStatus?.label}</span>
               }
             </div>
             {(editing || game.hltb_main > 0) && (

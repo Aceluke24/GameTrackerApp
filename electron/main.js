@@ -224,6 +224,9 @@ ipcMain.handle('igdb:setCached', (_, entry) => db.setCachedIgdbGame(entry));
 ipcMain.handle('userSettings:get', () => db.getUserSettings());
 ipcMain.handle('userSettings:set', (_, fields) => db.setUserSettings(fields));
 
+ipcMain.handle('userStatuses:get', () => db.getUserStatuses());
+ipcMain.handle('userStatuses:set', (_, statuses) => db.setUserStatuses(statuses));
+
 ipcMain.handle('auth:signUp', (_, email, password) => auth.signUp(email, password));
 ipcMain.handle('auth:signIn', (_, email, password) => auth.signIn(email, password));
 ipcMain.handle('auth:signOut', () => auth.signOut());

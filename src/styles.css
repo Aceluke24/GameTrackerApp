@@ -16,13 +16,22 @@
   --success-rgb: 74, 222, 128;
   --warning:   #fbbf24;
   --warning-rgb: 251, 191, 36;
-  --status-backlog:    #6b6b80;
-  --status-playing:    #7c6af7;
-  --status-live_service: #ec4899;
-  --status-finished:   #4ade80;
-  --status-want_again: #eab308;
-  --status-abandoned:  #e85d75;
-  --status-wishlist:   #38bdf8;
+  /* Custom status slots — positional, not name-keyed, since users can
+     rename/reassign any slot. Order matches DEFAULT_STATUSES in App.jsx:
+     1 Backlog, 2 Playing, 3 Live Service, 4 Finished, 5 Play Again,
+     6 Abandoned, 7 Wishlist, 8-12 blank/custom. */
+  --status-color-1:  #6b6b80;
+  --status-color-2:  #7c6af7;
+  --status-color-3:  #ec4899;
+  --status-color-4:  #4ade80;
+  --status-color-5:  #eab308;
+  --status-color-6:  #e85d75;
+  --status-color-7:  #38bdf8;
+  --status-color-8:  #2dd4bf;
+  --status-color-9:  #818cf8;
+  --status-color-10: #a3e635;
+  --status-color-11: #e879f9;
+  --status-color-12: #94a3b8;
 }
 
 :root[data-theme="light"] {
@@ -41,13 +50,18 @@
   --success-rgb: 22, 163, 74;
   --warning:   #b45309;
   --warning-rgb: 180, 83, 9;
-  --status-backlog:    #8a7f6f;
-  --status-playing:    #5b4bc4;
-  --status-live_service: #be185d;
-  --status-finished:   #16a34a;
-  --status-want_again: #b45309;
-  --status-abandoned:  #d1425a;
-  --status-wishlist:   #0284c7;
+  --status-color-1:  #8a7f6f;
+  --status-color-2:  #5b4bc4;
+  --status-color-3:  #be185d;
+  --status-color-4:  #16a34a;
+  --status-color-5:  #b45309;
+  --status-color-6:  #d1425a;
+  --status-color-7:  #0284c7;
+  --status-color-8:  #0f766e;
+  --status-color-9:  #4338ca;
+  --status-color-10: #4d7c0f;
+  --status-color-11: #a21caf;
+  --status-color-12: #475569;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

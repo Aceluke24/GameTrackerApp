@@ -57,12 +57,6 @@
 .detail-value { font-size: 14px; color: var(--text); }
 .detail-notes { font-size: 13px; color: var(--muted); line-height: 1.5; }
 .status-pill { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: var(--surface2); border: 1px solid var(--border); }
-.status-pill.status-playing   { color: var(--status-playing);    border-color: var(--status-playing); }
-.status-pill.status-live_service { color: var(--status-live_service); border-color: var(--status-live_service); }
-.status-pill.status-finished  { color: var(--status-finished);   border-color: var(--status-finished); }
-.status-pill.status-want_again{ color: var(--status-want_again); border-color: var(--status-want_again); }
-.status-pill.status-abandoned { color: var(--status-abandoned);  border-color: var(--status-abandoned); }
-.status-pill.status-wishlist  { color: var(--status-wishlist);   border-color: var(--status-wishlist); }
 .time-grid { display: flex; gap: 12px; }
 .time-cell { display: flex; flex-direction: column; gap: 2px; }
 .time-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }

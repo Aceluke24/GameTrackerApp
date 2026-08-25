@@ -16,9 +16,10 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 
 ### Game Tracking
 - Duplicate detection warns before adding a game that's already in your vault, whether added manually or via Steam import
-- Track games by status (Backlog, Playing, Finished, Play Again, Abandoned, Wishlist, Live Service)
+- Track games by status — 12 editable slots per account (label + emoji, edited in place via an "Edit Statuses" popup below the sidebar's status list), seeded with the defaults (Backlog, Playing, Finished, Play Again, Abandoned, Wishlist, Live Service). Backlog can't be cleared since it's the fallback other slots' games fall back to when cleared.
 - Search by title, platform, or genre — one search bar, no separate filter UI
 - Sort by title, time-to-beat, or recently added, plus a quick time-range filter (under/over X hours) — both live in the grid header, which stays pinned to the top as you scroll
+- Pin a game to the top of the list with the 🔥 marker on its card — pinned games get a "Next Up" badge and amber highlight so they're easy to spot; only applies to the default Title (A–Z) sort with no active search, so it doesn't fight an explicit sort or search
 - Editable genre tags per game, picked from a curated list matching IGDB's taxonomy
 - Stats dashboard — backlog time remaining, completion rate, genre/platform breakdown, a random "what to play" recommendation
 
@@ -67,6 +68,8 @@ psql "<your Postgres connection string from Connect → Session pooler>" -f supa
 psql "<same connection string>" -f supabase/migrations/0002_grants.sql
 psql "<same connection string>" -f supabase/migrations/0003_delete_own_account.sql
 psql "<same connection string>" -f supabase/migrations/0004_user_settings.sql
+psql "<same connection string>" -f supabase/migrations/0005_next_up.sql
+psql "<same connection string>" -f supabase/migrations/0006_user_statuses.sql
 ```
    (Only needed once per Supabase project — not required for every developer machine, just whoever's setting up that project.)
 4. In the dashboard, go to **Authentication → URL Configuration → Redirect URLs** and add `gamevault://auth-callback`. This is what lets the "Confirm your email" link bring you back into the app directly (see Deep Linking below) instead of a dead browser tab.
@@ -163,9 +166,7 @@ it's most reliable to test this against a packaged build (`npm run dist`) instea
 ## Roadmap
 
 ### Up next
-1. **"Next Up" queue** — a small marker/checkbox per game that pins it to the top of the list, so it's easy to see what's up next. Only applies to the default view — an active sort or search takes priority over the pin.
-2. **Offline/network-failure handling** — a deliberate look at what happens when Supabase or IGDB is unreachable (e.g. a clear "you're offline" state), rather than relying on whatever falls out of the existing try/catch + generic error toast.
-3. **Custom statuses** — replace the fixed set in `STATUSES` (`App.jsx`) with 12 editable slots per user (label + emoji), so the sidebar and sort reflect however someone actually organizes their library. Fixed slot count keeps this simple — no reordering/insert logic, just edit-in-place — via a new `user_statuses` table (`games.status` is already a plain `text` column with no DB constraint, so no migration risk there). Removing a slot reassigns its games to Backlog rather than hiding them; Backlog itself is the one slot that can't be removed, since it's the fallback.
+1. **Offline/network-failure handling** — a deliberate look at what happens when Supabase or IGDB is unreachable (e.g. a clear "you're offline" state), rather than relying on whatever falls out of the existing try/catch + generic error toast.
 
 ### Possible future ideas
 - **Price-drop / wishlist tracking** — notify when a Wishlist game drops in price, similar to Opera GX's deal-finder. Needs a new external data source (e.g. CheapShark or IsThereAnyDeal's API) — a genuinely new integration, not an extension of anything already here.
