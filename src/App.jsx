@@ -638,6 +638,7 @@ export default function App() {
           onAdd={handleAddGame}
           onClose={() => setShowAddModal(false)}
           onSwitchToBulk={() => { setShowAddModal(false); setShowBulkAddModal(true); }}
+          onSwitchToSteam={() => { setShowAddModal(false); setShowSteamModal(true); }}
         />
       )}
 

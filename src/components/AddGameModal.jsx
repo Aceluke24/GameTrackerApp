@@ -3,7 +3,7 @@ import { searchIGDB, formatTime } from '../api/igdb';
 import { describeError } from '../api/errors';
 import './Modal.css';
 
-export default function AddGameModal({ statuses, onAdd, onClose, onSwitchToBulk }) {
+export default function AddGameModal({ statuses, onAdd, onClose, onSwitchToBulk, onSwitchToSteam }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -50,7 +50,10 @@ export default function AddGameModal({ statuses, onAdd, onClose, onSwitchToBulk 
             <input className="field-input" placeholder="Search for a game..." value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} autoFocus />
             <button className="btn-primary" onClick={handleSearch} disabled={searching}>{searching ? '...' : 'Search'}</button>
           </div>
-          <button type="button" className="modal-link-btn" onClick={onSwitchToBulk}>Add multiple games at once →</button>
+          <div className="modal-link-row">
+            <button type="button" className="modal-link-btn" onClick={onSwitchToBulk}>Add multiple games at once →</button>
+            <button type="button" className="modal-link-btn" onClick={onSwitchToSteam}>Import from Steam →</button>
+          </div>
           {error && <p className="field-error">{error}</p>}
           {results.length > 0 && !selected && (
             <div className="search-results">
