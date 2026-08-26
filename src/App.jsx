@@ -6,6 +6,8 @@ import SettingsPage from './components/SettingsPage';
 import LoginPage from './components/LoginPage';
 import ResetPasswordPage from './components/ResetPasswordPage';
 import AddGameModal from './components/AddGameModal';
+import BulkAddModal from './components/BulkAddModal';
+import BulkResultsModal from './components/BulkResultsModal';
 import GameDetailModal from './components/GameDetailModal';
 import SteamImportModal from './components/SteamImportModal';
 import ChangePasswordModal from './components/ChangePasswordModal';
@@ -99,6 +101,8 @@ export default function App() {
   // null = no filter, otherwise { mode: 'under' | 'over', hours: number }
   const [timeFilter, setTimeFilter] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkAddModal, setShowBulkAddModal] = useState(false);
+  const [bulkResults, setBulkResults] = useState(null);
   const [showSteamModal, setShowSteamModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
@@ -299,6 +303,12 @@ export default function App() {
     }
   }
 
+  function handleBulkAdd(addedGames, meta) {
+    setGames(prev => [...prev, ...addedGames]);
+    setShowBulkAddModal(false);
+    setBulkResults({ title: 'Bulk Add Results', added: addedGames.map(g => g.title), ...meta });
+  }
+
   async function handleUpdateGame(id, fields) {
     try {
       let updated;
@@ -329,23 +339,33 @@ export default function App() {
     });
   }
 
-  async function runSteamImport(newGames) {
+  async function runSteamImport(newGames, skippedExisting) {
     setLoading(true);
     try {
       const enrichedGames = await enrichWithHLTB(newGames);
 
       const saved = [];
+      const failed = [];
       for (const game of enrichedGames) {
-        if (window.electronAPI) {
-          const s = await window.electronAPI.addGame(game);
-          saved.push(s);
-        } else {
-          saved.push({ id: Date.now() + Math.random(), ...game });
+        try {
+          if (window.electronAPI) {
+            const s = await window.electronAPI.addGame(game);
+            saved.push(s);
+          } else {
+            saved.push({ id: Date.now() + Math.random(), ...game });
+          }
+        } catch (err) {
+          failed.push({ title: game.title, reason: describeError(err).message });
         }
       }
 
       setGames(prev => [...prev, ...saved]);
-      showToast(`Imported ${saved.length} games from Steam!`);
+      setBulkResults({
+        title: 'Steam Import Results',
+        added: saved.map(g => g.title),
+        skippedDuplicateExisting: skippedExisting,
+        failed,
+      });
     } catch (err) {
       console.error('Steam import failed:', err);
       showToast(describeError(err, 'Steam import failed.').message, 'error');
@@ -359,6 +379,7 @@ export default function App() {
       const steamGames = await importSteamLibrary(apiKey, steamId);
       const existingTitles = new Set(games.map(g => g.title.toLowerCase()));
       const newGames = steamGames.filter(g => !existingTitles.has(g.title.toLowerCase()));
+      const skippedExisting = steamGames.filter(g => existingTitles.has(g.title.toLowerCase())).map(g => g.title);
 
       if (newGames.length === 0) {
         showToast('No new games to import — everything is already in your vault!');
@@ -366,8 +387,8 @@ export default function App() {
       }
 
       askConfirm(
-        `Import ${newGames.length} new games from Steam? (${steamGames.length - newGames.length} already in vault)\n\nThis also looks up completion times, so it may take a bit for a large batch.`,
-        () => runSteamImport(newGames),
+        `Import ${newGames.length} new games from Steam? (${skippedExisting.length} already in vault)\n\nThis also looks up completion times, so it may take a bit for a large batch.`,
+        () => runSteamImport(newGames, skippedExisting),
         { danger: false }
       );
     } catch (err) {
@@ -616,7 +637,21 @@ export default function App() {
           statuses={activeStatuses}
           onAdd={handleAddGame}
           onClose={() => setShowAddModal(false)}
+          onSwitchToBulk={() => { setShowAddModal(false); setShowBulkAddModal(true); }}
         />
+      )}
+
+      {showBulkAddModal && (
+        <BulkAddModal
+          knownPlatforms={[...new Set(games.map(g => g.platform).filter(Boolean))]}
+          existingGames={games}
+          onBulkAdd={handleBulkAdd}
+          onClose={() => setShowBulkAddModal(false)}
+        />
+      )}
+
+      {bulkResults && (
+        <BulkResultsModal results={bulkResults} onClose={() => setBulkResults(null)} />
       )}
 
       {showSteamModal && (

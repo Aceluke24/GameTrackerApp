@@ -3,7 +3,7 @@ import { searchIGDB, formatTime } from '../api/igdb';
 import { describeError } from '../api/errors';
 import './Modal.css';
 
-export default function AddGameModal({ statuses, onAdd, onClose }) {
+export default function AddGameModal({ statuses, onAdd, onClose, onSwitchToBulk }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -50,6 +50,7 @@ export default function AddGameModal({ statuses, onAdd, onClose }) {
             <input className="field-input" placeholder="Search for a game..." value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} autoFocus />
             <button className="btn-primary" onClick={handleSearch} disabled={searching}>{searching ? '...' : 'Search'}</button>
           </div>
+          <button type="button" className="modal-link-btn" onClick={onSwitchToBulk}>Add multiple games at once →</button>
           {error && <p className="field-error">{error}</p>}
           {results.length > 0 && !selected && (
             <div className="search-results">

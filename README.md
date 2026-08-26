@@ -17,6 +17,7 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 
 ### Game Tracking
 - Duplicate detection warns before adding a game that's already in your vault, whether added manually or via Steam import
+- Bulk add — pick one console, paste a list of game names (one per line or comma-separated), and each is matched against IGDB automatically. A results summary afterward shows what was added vs. skipped (already in your vault, duplicated in the list, blank lines) or couldn't be matched on IGDB
 - Track games by status — 12 editable slots per account (label + emoji, edited in place via an "Edit Statuses" popup below the sidebar's status list), seeded with the defaults (Backlog, Playing, Finished, Play Again, Abandoned, Wishlist, Live Service). Backlog can't be cleared since it's the fallback other slots' games fall back to when cleared.
 - Search by title, platform, or genre — one search bar, no separate filter UI
 - Sort by title, time-to-beat, or recently added, plus a quick time-range filter (under/over X hours) — both live in the grid header, which stays pinned to the top as you scroll
@@ -28,6 +29,7 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 - Steam library import, enriched with HowLongToBeat completion times via IGDB — each account uses its own Steam API key + Steam ID (entered via a popup on Import, saved to Settings for next time), never one shared key
 - Shared IGDB metadata cache — completion-time/rating lookups are cached in Supabase and reused across all users, so the same game isn't re-fetched from IGDB every time someone adds it
 - IGDB access tokens auto-refresh in the background — no manual token regeneration every ~60 days
+- Steam import and bulk add both end with a results summary (added / already in vault / couldn't match / failed) instead of a single toast — and a failure partway through a batch no longer drops the games that already saved successfully
 
 ### Settings & Customization
 - Settings page — account info, change password, sign out, account deletion, delete-all, and appearance controls
@@ -134,6 +136,8 @@ game-vault/
 │   │   ├── LoginPage        ← Sign up / sign in screen + forgot password
 │   │   ├── ResetPasswordPage ← Set a new password after clicking the recovery link
 │   │   ├── AddGameModal     ← Search IGDB + add game
+│   │   ├── BulkAddModal     ← Add many games at once by console + name list, matched via IGDB
+│   │   ├── BulkResultsModal ← Shared added/skipped/failed summary for bulk add + Steam import
 │   │   ├── GameDetailModal  ← View/edit game details + genres
 │   │   ├── SteamImportModal ← Per-user Steam credentials + import trigger
 │   │   ├── ChangePasswordModal ← Change password from Settings

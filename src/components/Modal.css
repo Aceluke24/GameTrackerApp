@@ -68,3 +68,9 @@
 .genre-chip { font-size: 12px; font-weight: 500; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; transition: color 0.15s, border-color 0.15s, background 0.15s; }
 .genre-chip:hover { color: var(--text); border-color: var(--accent); }
 .genre-chip.selected { color: white; background: var(--accent); border-color: var(--accent); }
+.modal-link-btn { background: transparent; color: var(--accent); font-size: 12px; padding: 0; align-self: flex-start; }
+.modal-link-btn:hover { text-decoration: underline; }
+.results-section { display: flex; flex-direction: column; gap: 6px; }
+.results-section-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.results-list { list-style: disc; padding-left: 20px; margin: 0; font-size: 13px; color: var(--muted); max-height: 140px; overflow-y: auto; }
+.results-list li { padding: 2px 0; }
