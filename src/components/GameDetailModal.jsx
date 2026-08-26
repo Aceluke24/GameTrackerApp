@@ -79,7 +79,7 @@ export default function GameDetailModal({ game, statuses, onUpdate, onDelete, on
   const currentStatus = statuses.find(s => s.key === (editing ? status : game.status));
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="modal modal-detail">
         <div className="modal-header">
           <h2>{game.title}</h2>

@@ -74,7 +74,7 @@ export default function BulkAddModal({ knownPlatforms, existingGames, onBulkAdd,
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !processing && onClose()}>
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && !processing && onClose()}>
       <div className="modal">
         <div className="modal-header">
           <h2>Bulk Add Games</h2>

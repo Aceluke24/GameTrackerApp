@@ -32,7 +32,7 @@ export default function ChangePasswordModal({ onClose, showToast }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="modal-header">
           <h2>Change Password</h2>
