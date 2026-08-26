@@ -3,7 +3,7 @@ import { searchIGDB, formatTime } from '../api/igdb';
 import { describeError } from '../api/errors';
 import './Modal.css';
 
-export default function AddGameModal({ statuses, onAdd, onClose, onSwitchToBulk, onSwitchToSteam }) {
+export default function AddGameModal({ statuses, knownPlatforms, onAdd, onClose, onSwitchToBulk, onSwitchToSteam }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -88,7 +88,10 @@ export default function AddGameModal({ statuses, onAdd, onClose, onSwitchToBulk,
             <div className="form-row">
               <div className="form-field">
                 <label>Platform</label>
-                <input className="field-input" placeholder="PC, PS5, Xbox, Switch..." value={platform} onChange={e => setPlatform(e.target.value)} />
+                <input className="field-input" list="add-game-platforms" placeholder="PC, PS5, Xbox, Switch..." value={platform} onChange={e => setPlatform(e.target.value)} />
+                <datalist id="add-game-platforms">
+                  {knownPlatforms.map(p => <option key={p} value={p} />)}
+                </datalist>
               </div>
               <div className="form-field">
                 <label>Status</label>

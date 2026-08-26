@@ -557,6 +557,10 @@ export default function App() {
     return acc;
   }, { all: games.length });
 
+  // Platforms already in the library, offered as autocomplete suggestions
+  // anywhere a platform is typed in (Add Game, Bulk Add, bulk-select change).
+  const knownPlatforms = [...new Set(games.map(g => g.platform).filter(Boolean))];
+
   if (passwordRecovery) {
     return (
       <div className="app">
@@ -645,7 +649,7 @@ export default function App() {
             onSelectAll={handleSelectAll}
             onBulkStatusChange={handleBulkStatusChange}
             onBulkPlatformChange={handleBulkPlatformChange}
-            knownPlatforms={[...new Set(games.map(g => g.platform).filter(Boolean))]}
+            knownPlatforms={knownPlatforms}
             onBulkDelete={handleBulkDelete}
             onClearSelection={clearSelection}
           />
@@ -655,6 +659,7 @@ export default function App() {
       {showAddModal && (
         <AddGameModal
           statuses={activeStatuses}
+          knownPlatforms={knownPlatforms}
           onAdd={handleAddGame}
           onClose={() => setShowAddModal(false)}
           onSwitchToBulk={() => { setShowAddModal(false); setShowBulkAddModal(true); }}
@@ -664,7 +669,7 @@ export default function App() {
 
       {showBulkAddModal && (
         <BulkAddModal
-          knownPlatforms={[...new Set(games.map(g => g.platform).filter(Boolean))]}
+          knownPlatforms={knownPlatforms}
           existingGames={games}
           onBulkAdd={handleBulkAdd}
           onClose={() => setShowBulkAddModal(false)}
