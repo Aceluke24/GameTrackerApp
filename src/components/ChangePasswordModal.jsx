@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { cleanErrorMessage } from '../api/errors';
+import { describeError } from '../api/errors';
 import './Modal.css';
 
 export default function ChangePasswordModal({ onClose, showToast }) {
@@ -25,7 +25,7 @@ export default function ChangePasswordModal({ onClose, showToast }) {
       onClose();
       showToast('Password changed successfully!');
     } catch (err) {
-      setError(cleanErrorMessage(err));
+      setError(describeError(err).message);
     } finally {
       setLoading(false);
     }

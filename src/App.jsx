@@ -12,10 +12,13 @@ import ChangePasswordModal from './components/ChangePasswordModal';
 import Toast from './components/Toast';
 import ConfirmDialog from './components/ConfirmDialog';
 import TitleBar from './components/TitleBar';
+import OfflineBanner from './components/OfflineBanner';
 import './App.css';
 import { importSteamLibrary, enrichWithHLTB } from './api/steam';
 import { gamesToCSV, gamesToJSON, saveExportFile } from './api/export';
 import { applyColorScheme } from './theme';
+import { describeError, onNetworkTrouble } from './api/errors';
+import useOnlineStatus from './hooks/useOnlineStatus';
 
 // Matches IGDB's genre taxonomy so manually picked genres line up with
 // whatever IGDB search/import already writes into the genres column.
@@ -120,6 +123,26 @@ export default function App() {
     setConfirmState({ message, onConfirm, danger });
   }
 
+  // `online` is the OS-level "wifi is off" signal (free, instant).
+  // `apiOffline` covers the case that can't see — wifi's fine but
+  // Supabase/IGDB itself is unreachable — by lighting up on any call
+  // anywhere in the app that describeError classifies as network-caused,
+  // then self-clearing after a short cooldown if nothing re-triggers it.
+  const online = useOnlineStatus();
+  const [apiOffline, setApiOffline] = useState(false);
+  const apiOfflineTimer = useRef(null);
+  useEffect(() => onNetworkTrouble(() => {
+    setApiOffline(true);
+    clearTimeout(apiOfflineTimer.current);
+    apiOfflineTimer.current = setTimeout(() => setApiOffline(false), 20000);
+  }), []);
+  const isOffline = !online || apiOffline;
+  const wasOnlineRef = useRef(online);
+  useEffect(() => {
+    if (online && !wasOnlineRef.current) showToast('Back online.');
+    wasOnlineRef.current = online;
+  }, [online]);
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
@@ -147,7 +170,27 @@ export default function App() {
       setSession({ user: { email: 'preview' } });
       return;
     }
-    window.electronAPI.getSession().then(s => setSession(s ?? null));
+    function checkSession() {
+      window.electronAPI.getSession()
+        .then(s => setSession(s ?? null))
+        .catch(err => {
+          // Unhandled here, session would stay `undefined` forever — the
+          // app's own render logic shows nothing but the TitleBar for that
+          // state, a permanent blank screen with no way out. Fail safe to
+          // the login screen instead; a network failure gets picked up by
+          // the retry below once connectivity actually returns.
+          console.error('Failed to check session:', err);
+          describeError(err);
+          setSession(null);
+        });
+    }
+    checkSession();
+    // Self-heals the common case: the check above failed because the app
+    // launched offline. Re-checking on every reconnect (rather than only
+    // when the earlier check failed) avoids a stale-closure trap here and
+    // costs nothing extra — getSession() just reads local storage unless a
+    // token refresh is actually due.
+    window.addEventListener('online', checkSession);
     const unsubAuth = window.electronAPI.onAuthChange((s, event) => {
       if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
       setSession(s ?? null);
@@ -156,7 +199,7 @@ export default function App() {
     // PASSWORD_RECOVERY event only fires from its browser-URL detection,
     // which is off here (there's no URL bar in Electron).
     const unsubRecovery = window.electronAPI.onPasswordRecovery(() => setPasswordRecovery(true));
-    return () => { unsubAuth(); unsubRecovery(); };
+    return () => { unsubAuth(); unsubRecovery(); window.removeEventListener('online', checkSession); };
   }, []);
 
   // Load the games library once we know who's logged in, and always land on
@@ -196,7 +239,7 @@ export default function App() {
           setSession(null);
         } catch (err) {
           console.error('Delete account failed:', err);
-          showToast('Failed to delete your account. Please try again.', 'error');
+          showToast(describeError(err, 'Failed to delete your account.').message, 'error');
         }
       }
     );
@@ -214,6 +257,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('Failed to load games:', err);
+      showToast(describeError(err, 'Failed to load your library.').message, 'error');
     }
     setLoading(false);
   }
@@ -226,6 +270,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('Failed to load statuses:', err);
+      showToast(describeError(err, 'Failed to load your custom statuses.').message, 'error');
     }
   }
 
@@ -241,7 +286,7 @@ export default function App() {
       setShowAddModal(false);
     } catch (err) {
       console.error('Failed to add game:', err);
-      showToast('Failed to add the game. Please try again.', 'error');
+      showToast(describeError(err, 'Failed to add the game.').message, 'error');
     }
   }
 
@@ -267,6 +312,7 @@ export default function App() {
       setSelectedGame(prev => prev?.id === id ? { ...prev, ...fields } : prev);
     } catch (err) {
       console.error('Failed to update game:', err);
+      showToast(describeError(err, 'Failed to save your changes.').message, 'error');
     }
   }
 
@@ -278,7 +324,7 @@ export default function App() {
         setSelectedGame(null);
       } catch (err) {
         console.error('Failed to delete game:', err);
-        showToast('Failed to delete the game. Please try again.', 'error');
+        showToast(describeError(err, 'Failed to delete the game.').message, 'error');
       }
     });
   }
@@ -302,7 +348,7 @@ export default function App() {
       showToast(`Imported ${saved.length} games from Steam!`);
     } catch (err) {
       console.error('Steam import failed:', err);
-      showToast('Steam import failed. Please try again.', 'error');
+      showToast(describeError(err, 'Steam import failed.').message, 'error');
     } finally {
       setLoading(false);
     }
@@ -326,7 +372,7 @@ export default function App() {
       );
     } catch (err) {
       console.error('Steam import failed:', err);
-      showToast('Steam import failed. Please try again.', 'error');
+      showToast(describeError(err, 'Steam import failed.').message, 'error');
     }
   }
 
@@ -342,7 +388,7 @@ export default function App() {
       if (saved) showToast(`Exported ${games.length} games as ${format.toUpperCase()}.`);
     } catch (err) {
       console.error('Export failed:', err);
-      showToast('Export failed. Please try again.', 'error');
+      showToast(describeError(err, 'Export failed.').message, 'error');
     }
   }
 
@@ -355,7 +401,7 @@ export default function App() {
         setSelectedGame(null);
       } catch (err) {
         console.error('Failed to delete all games:', err);
-        showToast('Failed to delete your games. Please try again.', 'error');
+        showToast(describeError(err, 'Failed to delete your games.').message, 'error');
       }
     });
   }
@@ -387,7 +433,7 @@ export default function App() {
       showToast('Statuses saved.');
     } catch (err) {
       console.error('Failed to update statuses:', err);
-      showToast('Failed to save your statuses. Please try again.', 'error');
+      showToast(describeError(err, 'Failed to save your statuses.').message, 'error');
     }
   }
 
@@ -416,7 +462,7 @@ export default function App() {
       clearSelection();
     } catch (err) {
       console.error('Failed to update selected games:', err);
-      showToast('Failed to update the selected games. Please try again.', 'error');
+      showToast(describeError(err, 'Failed to update the selected games.').message, 'error');
     }
   }
 
@@ -429,7 +475,7 @@ export default function App() {
         clearSelection();
       } catch (err) {
         console.error('Failed to delete selected games:', err);
-        showToast('Failed to delete the selected games. Please try again.', 'error');
+        showToast(describeError(err, 'Failed to delete the selected games.').message, 'error');
       }
     });
   }
@@ -477,6 +523,7 @@ export default function App() {
     return (
       <div className="app">
         <TitleBar />
+        <OfflineBanner show={isOffline} />
         <div className="app-body">
           <ResetPasswordPage onDone={() => setPasswordRecovery(false)} />
         </div>
@@ -488,6 +535,7 @@ export default function App() {
     return (
       <div className="app">
         <TitleBar />
+        <OfflineBanner show={isOffline} />
       </div>
     );
   }
@@ -496,6 +544,7 @@ export default function App() {
     return (
       <div className="app">
         <TitleBar />
+        <OfflineBanner show={isOffline} />
         <div className="app-body">
           <LoginPage onAuthed={setSession} />
         </div>
@@ -506,6 +555,7 @@ export default function App() {
   return (
     <div className="app">
       <TitleBar />
+      <OfflineBanner show={isOffline} />
       <div className="app-body">
         <Sidebar
           filter={filter}
@@ -573,6 +623,7 @@ export default function App() {
         <SteamImportModal
           onImport={handleImportSteam}
           onClose={() => setShowSteamModal(false)}
+          showToast={showToast}
         />
       )}
 

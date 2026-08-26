@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { formatTime, refreshFromIGDB } from '../api/igdb';
 import { getSteamCoverFallback } from '../api/steam';
+import { describeError } from '../api/errors';
 import { GENRES } from '../App';
 import './Modal.css';
 
@@ -53,7 +54,7 @@ export default function GameDetailModal({ game, statuses, onUpdate, onDelete, on
       onUpdate(game.id, fresh);
     } catch (err) {
       console.error('Refresh from IGDB failed:', err);
-      setRefreshError('IGDB lookup failed — try again.');
+      setRefreshError(describeError(err, 'IGDB lookup failed — try again.').message);
     } finally {
       setRefreshing(false);
     }

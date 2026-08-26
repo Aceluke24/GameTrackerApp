@@ -1,4 +1,5 @@
 import { searchIGDB, pickBestMatch } from './igdb';
+import { fetchWithTimeout, markNetworkError } from './networkError';
 
 const STEAM_BASE = import.meta.env.DEV ? '/steam' : 'https://api.steampowered.com';
 
@@ -18,7 +19,12 @@ export async function importSteamLibrary(apiKey, steamId) {
 
   const url = `${STEAM_BASE}/IPlayerService/GetOwnedGames/v1/?key=${apiKey}&steamid=${steamId}&include_appinfo=true&format=json`;
 
-  const response = await fetch(url);
+  let response;
+  try {
+    response = await fetchWithTimeout(url, {}, 10000);
+  } catch (err) {
+    throw markNetworkError(err, 'Could not reach Steam.');
+  }
   if (!response.ok) throw new Error('Steam API error — check your API key and Steam ID');
 
   const data = await response.json();

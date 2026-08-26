@@ -1,12 +1,17 @@
 const supabase = require('./supabaseClient');
 const secureStore = require('./secureStore');
+const { isNetworkError, NETWORK_ERROR_PREFIX } = require('./networkError');
 
 // Supabase errors are plain objects, not real Error instances — thrown as-is
 // they lose their message crossing the Electron IPC boundary (the renderer
 // just sees "[object Object]"). Wrap them in a real Error so ipcMain.handle
-// actually forwards something useful.
+// actually forwards something useful. A network failure gets a recognizable
+// prefix too — that's the only classification that survives the IPC hop for
+// the renderer to detect afterward.
 function check(error) {
-  if (error) throw new Error(error.message || JSON.stringify(error));
+  if (!error) return;
+  const message = error.message || JSON.stringify(error);
+  throw new Error(isNetworkError(error) ? NETWORK_ERROR_PREFIX + message : message);
 }
 
 // App-wide settings (currently just the cached IGDB access token) — not

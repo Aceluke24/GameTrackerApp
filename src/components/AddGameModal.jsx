@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { searchIGDB, formatTime } from '../api/igdb';
+import { describeError } from '../api/errors';
 import './Modal.css';
 
 export default function AddGameModal({ statuses, onAdd, onClose }) {
@@ -19,7 +20,10 @@ export default function AddGameModal({ statuses, onAdd, onClose }) {
       setResults(data);
       if (data.length === 0) setError('No games found. Try a different search.');
     } catch (err) {
-      setError('Couldn’t reach IGDB — check your internet connection, or add the game manually below.');
+      const { offline, message } = describeError(err);
+      setError(offline
+        ? 'Couldn’t reach IGDB — check your internet connection, or add the game manually below.'
+        : `${message} You can also add the game manually below.`);
     }
     setSearching(false);
   }

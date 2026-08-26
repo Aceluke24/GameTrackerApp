@@ -22,6 +22,7 @@ app.setPath('userData', path.join(app.getPath('appData'), 'vaultlog'));
 
 const db = require('./database');
 const auth = require('./auth');
+const { fetchWithTimeout, isNetworkError, NETWORK_ERROR_PREFIX } = require('./networkError');
 
 const IGDB_CLIENT_ID = process.env.IGDB_CLIENT_ID;
 const IGDB_CLIENT_SECRET = process.env.IGDB_CLIENT_SECRET;
@@ -43,15 +44,20 @@ async function getValidIgdbToken() {
     throw new Error('IGDB_CLIENT_ID / IGDB_CLIENT_SECRET are not set — add them to your .env file.');
   }
 
-  const response = await fetch('https://id.twitch.tv/oauth2/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: IGDB_CLIENT_ID,
-      client_secret: IGDB_CLIENT_SECRET,
-      grant_type: 'client_credentials',
-    }),
-  });
+  let response;
+  try {
+    response = await fetchWithTimeout('https://id.twitch.tv/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: IGDB_CLIENT_ID,
+        client_secret: IGDB_CLIENT_SECRET,
+        grant_type: 'client_credentials',
+      }),
+    }, 10000);
+  } catch (err) {
+    throw isNetworkError(err) ? new Error(NETWORK_ERROR_PREFIX + err.message) : err;
+  }
   if (!response.ok) throw new Error(`Twitch token request failed: ${response.statusText}`);
 
   const data = await response.json();

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
+import { describeError } from '../api/errors';
 import './Modal.css';
 import './SettingsPage.css';
 
-export default function SteamImportModal({ onImport, onClose }) {
+export default function SteamImportModal({ onImport, onClose, showToast }) {
   const [apiKey, setApiKey] = useState('');
   const [steamId, setSteamId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -10,11 +11,16 @@ export default function SteamImportModal({ onImport, onClose }) {
 
   useEffect(() => {
     if (!window.electronAPI) { setLoading(false); return; }
-    window.electronAPI.getUserSettings().then(({ steam_api_key, steam_id }) => {
-      setApiKey(steam_api_key || '');
-      setSteamId(steam_id || '');
-      setLoading(false);
-    });
+    window.electronAPI.getUserSettings()
+      .then(({ steam_api_key, steam_id }) => {
+        setApiKey(steam_api_key || '');
+        setSteamId(steam_id || '');
+      })
+      .catch(err => {
+        console.error('Failed to load Steam settings:', err);
+        showToast(describeError(err, 'Failed to load your saved Steam credentials.').message, 'error');
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   function handleExternalLink(e) {
@@ -30,9 +36,14 @@ export default function SteamImportModal({ onImport, onClose }) {
   }
 
   async function handleSave() {
-    await saveCredentials();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      await saveCredentials();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error('Failed to save Steam credentials:', err);
+      showToast(describeError(err, 'Failed to save your Steam credentials.').message, 'error');
+    }
   }
 
   async function handleImport() {
@@ -40,9 +51,15 @@ export default function SteamImportModal({ onImport, onClose }) {
     const trimmedId = steamId.trim();
     if (!trimmedKey || !trimmedId) return;
 
-    // Import always uses (and persists) whatever's currently in the fields,
-    // so it works even if Save was never clicked separately.
-    await saveCredentials();
+    try {
+      // Import always uses (and persists) whatever's currently in the
+      // fields, so it works even if Save was never clicked separately.
+      await saveCredentials();
+    } catch (err) {
+      console.error('Failed to save Steam credentials:', err);
+      showToast(describeError(err, 'Failed to save your Steam credentials.').message, 'error');
+      return;
+    }
     // The import itself shows its own confirm/progress/alerts in App.jsx —
     // close right away rather than keeping the modal open over that.
     onClose();

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { cleanErrorMessage } from '../api/errors';
+import { describeError } from '../api/errors';
 import './Modal.css';
 import './LoginPage.css';
 
@@ -37,7 +37,7 @@ export default function LoginPage({ onAuthed }) {
         onAuthed(session);
       }
     } catch (err) {
-      setError(cleanErrorMessage(err));
+      setError(describeError(err).message);
     } finally {
       setLoading(false);
     }
@@ -74,7 +74,7 @@ export default function LoginPage({ onAuthed }) {
       await window.electronAPI.resetPassword(email);
       setForgotStep('sent');
     } catch (err) {
-      setError(cleanErrorMessage(err));
+      setError(describeError(err).message);
     } finally {
       setLoading(false);
     }

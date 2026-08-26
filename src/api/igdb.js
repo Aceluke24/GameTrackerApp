@@ -1,3 +1,5 @@
+import { fetchWithTimeout, markNetworkError } from './networkError';
+
 const IGDB_BASE = import.meta.env.DEV ? '/igdb' : 'https://api.igdb.com/v4';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -23,15 +25,20 @@ async function getIgdbCredentials() {
 // for whichever games land on the rejected requests.
 async function igdbPost(endpoint, body, retries = 3) {
   const { accessToken, clientId } = await getIgdbCredentials();
-  const response = await fetch(`${IGDB_BASE}/${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/plain',
-      'Client-ID': clientId,
-      'Authorization': `Bearer ${accessToken}`,
-    },
-    body,
-  });
+  let response;
+  try {
+    response = await fetchWithTimeout(`${IGDB_BASE}/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain',
+        'Client-ID': clientId,
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body,
+    }, 10000);
+  } catch (err) {
+    throw markNetworkError(err, 'Could not reach IGDB.');
+  }
   if (response.status === 429 && retries > 0) {
     await sleep(750 * (4 - retries));
     return igdbPost(endpoint, body, retries - 1);

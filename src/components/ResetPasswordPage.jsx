@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { cleanErrorMessage } from '../api/errors';
+import { describeError } from '../api/errors';
 import './Modal.css';
 import './LoginPage.css';
 
@@ -30,7 +30,7 @@ export default function ResetPasswordPage({ onDone }) {
       await window.electronAPI.updatePassword(password);
       onDone();
     } catch (err) {
-      setError(cleanErrorMessage(err));
+      setError(describeError(err).message);
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const secureStore = require('./secureStore');
+const { fetchWithTimeout } = require('./networkError');
 
 // Main process only — this is the trusted boundary (same pattern already
 // used for the IGDB client secret in main.js). The anon key is safe to embed
@@ -14,6 +15,12 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANO
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: false,
+  },
+  // Both the auth and database (postgrest) sub-clients route their requests
+  // through this — one place to give every Supabase call a timeout, instead
+  // of a hung connection (as opposed to a fast DNS failure) blocking forever.
+  global: {
+    fetch: (url, options) => fetchWithTimeout(url, options, 15000),
   },
 });
 

@@ -1,4 +1,5 @@
 const supabase = require('./supabaseClient');
+const { isNetworkError, NETWORK_ERROR_PREFIX } = require('./networkError');
 
 // Supabase's raw auth error text is written for developers, not end users
 // (e.g. "User with this information (email address, phone number) cannot be
@@ -23,9 +24,14 @@ const FRIENDLY_AUTH_ERRORS = {
 
 // See database.js's check() — Supabase errors are plain objects and lose
 // their message crossing the IPC boundary unless wrapped in a real Error.
+// A network failure (e.g. getSession()'s background token refresh failing
+// offline surfaces as auth-js's typed AuthRetryableFetchError) gets a
+// recognizable prefix instead of a friendly-auth-error lookup, since none of
+// those codes apply to a connectivity problem.
 function check(error) {
   if (!error) return;
-  throw new Error(FRIENDLY_AUTH_ERRORS[error.code] || error.message || JSON.stringify(error));
+  const message = FRIENDLY_AUTH_ERRORS[error.code] || error.message || JSON.stringify(error);
+  throw new Error(isNetworkError(error) ? NETWORK_ERROR_PREFIX + message : message);
 }
 
 async function signUp(email, password) {

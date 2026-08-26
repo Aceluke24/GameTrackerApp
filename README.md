@@ -13,6 +13,7 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 - Your library syncs across every device you're signed into — no more per-device local database
 - Logging in always lands on the games view, regardless of which page you were on when you last signed out
 - Errors and confirmations use in-app toasts and dialogs instead of native browser popups, with plain-language wording for common cases (wrong password, reusing your old password, duplicate accounts, etc.) instead of raw technical error text
+- A persistent banner appears whenever you're offline or Supabase/IGDB can't be reached, and clears itself automatically once you're back — every network call has a timeout so a bad connection fails fast instead of hanging
 
 ### Game Tracking
 - Duplicate detection warns before adding a game that's already in your vault, whether added manually or via Steam import
@@ -164,9 +165,6 @@ it's most reliable to test this against a packaged build (`npm run dist`) instea
 ---
 
 ## Roadmap
-
-### Up next
-1. **Offline/network-failure handling** — a deliberate look at what happens when Supabase or IGDB is unreachable (e.g. a clear "you're offline" state), rather than relying on whatever falls out of the existing try/catch + generic error toast.
 
 ### Possible future ideas
 - **Price-drop / wishlist tracking** — notify when a Wishlist game drops in price, similar to Opera GX's deal-finder. Needs a new external data source (e.g. CheapShark or IsThereAnyDeal's API) — a genuinely new integration, not an extension of anything already here.
