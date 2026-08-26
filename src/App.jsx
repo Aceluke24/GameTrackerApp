@@ -475,11 +475,28 @@ export default function App() {
     setSelectedIds(new Set());
   }
 
+  function handleSelectAll(ids) {
+    setSelectedIds(new Set(ids));
+  }
+
   async function handleBulkStatusChange(status) {
     if (selectedIds.size === 0 || !status) return;
     try {
       if (window.electronAPI) await window.electronAPI.updateGamesStatus([...selectedIds], status);
       setGames(prev => prev.map(g => selectedIds.has(g.id) ? { ...g, status } : g));
+      clearSelection();
+    } catch (err) {
+      console.error('Failed to update selected games:', err);
+      showToast(describeError(err, 'Failed to update the selected games.').message, 'error');
+    }
+  }
+
+  async function handleBulkPlatformChange(platform) {
+    const trimmed = platform?.trim();
+    if (selectedIds.size === 0 || !trimmed) return;
+    try {
+      if (window.electronAPI) await window.electronAPI.updateGamesPlatform([...selectedIds], trimmed);
+      setGames(prev => prev.map(g => selectedIds.has(g.id) ? { ...g, platform: trimmed } : g));
       clearSelection();
     } catch (err) {
       console.error('Failed to update selected games:', err);
@@ -625,7 +642,10 @@ export default function App() {
             selectedIds={selectedIds}
             onToggleSelectMode={toggleSelectMode}
             onToggleSelectGame={toggleSelectGame}
+            onSelectAll={handleSelectAll}
             onBulkStatusChange={handleBulkStatusChange}
+            onBulkPlatformChange={handleBulkPlatformChange}
+            knownPlatforms={[...new Set(games.map(g => g.platform).filter(Boolean))]}
             onBulkDelete={handleBulkDelete}
             onClearSelection={clearSelection}
           />

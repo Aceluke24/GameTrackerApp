@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteGame:  (id)         => ipcRenderer.invoke('games:delete', id),
   deleteAllGames: ()        => ipcRenderer.invoke('games:deleteAll'),
   updateGamesStatus: (ids, status) => ipcRenderer.invoke('games:updateStatusMany', ids, status),
+  updateGamesPlatform: (ids, platform) => ipcRenderer.invoke('games:updatePlatformMany', ids, platform),
   deleteGames: (ids)        => ipcRenderer.invoke('games:deleteMany', ids),
   searchGames: (query)      => ipcRenderer.invoke('games:search', query),
 

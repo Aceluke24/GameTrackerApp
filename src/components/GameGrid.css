@@ -60,6 +60,12 @@
 .bulk-bar { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.35); z-index: 40; }
 .bulk-count { font-size: 13px; font-weight: 600; color: var(--text); padding-right: 4px; white-space: nowrap; }
 .bulk-status-select { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+.bulk-platform-group { display: flex; gap: 6px; }
+.bulk-platform-input { width: 130px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+.bulk-platform-input::placeholder { color: var(--muted); }
+.bulk-platform-btn { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; transition: opacity 0.15s; }
+.bulk-platform-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.bulk-platform-btn:not(:disabled):hover { border-color: var(--accent); }
 .bulk-delete-btn { background: transparent; color: var(--accent2); border: 1px solid var(--accent2); border-radius: 8px; padding: 8px 14px; font-size: 13px; transition: background 0.15s, color 0.15s; }
 .bulk-delete-btn:hover { background: var(--accent2); color: white; }
 .bulk-clear-btn { background: transparent; color: var(--muted); border-radius: 8px; padding: 8px 10px; font-size: 13px; transition: color 0.15s; }

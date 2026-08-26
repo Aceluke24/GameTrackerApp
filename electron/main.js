@@ -217,6 +217,7 @@ ipcMain.handle('games:update', (_, id, fields) => db.updateGame(id, fields));
 ipcMain.handle('games:delete', (_, id) => db.deleteGame(id));
 ipcMain.handle('games:deleteAll', () => db.deleteAllGames());
 ipcMain.handle('games:updateStatusMany', (_, ids, status) => db.updateGamesStatus(ids, status));
+ipcMain.handle('games:updatePlatformMany', (_, ids, platform) => db.updateGamesPlatform(ids, platform));
 ipcMain.handle('games:deleteMany', (_, ids) => db.deleteGames(ids));
 ipcMain.handle('games:search', (_, query) => db.searchGames(query));
 

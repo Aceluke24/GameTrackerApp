@@ -64,6 +64,12 @@ async function updateGamesStatus(ids, status) {
   return { success: true };
 }
 
+async function updateGamesPlatform(ids, platform) {
+  const { error } = await supabase.from('games').update({ platform }).in('id', ids);
+  check(error);
+  return { success: true };
+}
+
 async function deleteGames(ids) {
   const { error } = await supabase.from('games').delete().in('id', ids);
   check(error);
@@ -125,7 +131,7 @@ async function setUserStatuses(statuses) {
 
 module.exports = {
   getAllGames, addGame, updateGame, deleteGame, deleteAllGames,
-  updateGamesStatus, deleteGames, searchGames,
+  updateGamesStatus, updateGamesPlatform, deleteGames, searchGames,
   getSetting, setSetting,
   getCachedIgdbGame, setCachedIgdbGame,
   getUserSettings, setUserSettings,

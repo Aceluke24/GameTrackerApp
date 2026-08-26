@@ -6,8 +6,16 @@ import './GameGrid.css';
 
 export default function GameGrid({
   games, loading, search, setSearch, sort, setSort, timeFilter, setTimeFilter, onSelect, onToggleNextUp, statuses,
-  selectMode, selectedIds, onToggleSelectMode, onToggleSelectGame, onBulkStatusChange, onBulkDelete, onClearSelection,
+  selectMode, selectedIds, onToggleSelectMode, onToggleSelectGame, onSelectAll, onBulkStatusChange, onBulkPlatformChange, knownPlatforms, onBulkDelete, onClearSelection,
 }) {
+  const [platformInput, setPlatformInput] = useState('');
+
+  function applyPlatform() {
+    if (!platformInput.trim()) return;
+    onBulkPlatformChange(platformInput);
+    setPlatformInput('');
+  }
+
   if (loading) return <div className="grid-empty"><div className="spinner" /></div>;
   return (
     <main className="game-grid-container">
@@ -27,6 +35,11 @@ export default function GameGrid({
         <button className={`select-mode-btn ${selectMode ? 'active' : ''}`} onClick={onToggleSelectMode}>
           {selectMode ? 'Cancel' : 'Select'}
         </button>
+        {selectMode && games.length > 0 && (
+          <button className="select-mode-btn" onClick={() => onSelectAll(games.map(g => g.id))}>
+            Select All
+          </button>
+        )}
       </div>
       {games.length === 0 ? (
         <div className="grid-empty">
@@ -63,6 +76,20 @@ export default function GameGrid({
               <option key={s.key} value={s.key}>{s.emoji} {s.label}</option>
             ))}
           </select>
+          <div className="bulk-platform-group">
+            <input
+              className="bulk-platform-input"
+              list="bulk-platform-list"
+              placeholder="Set platform…"
+              value={platformInput}
+              onChange={e => setPlatformInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && applyPlatform()}
+            />
+            <datalist id="bulk-platform-list">
+              {knownPlatforms.map(p => <option key={p} value={p} />)}
+            </datalist>
+            <button className="bulk-platform-btn" onClick={applyPlatform} disabled={!platformInput.trim()}>Set</button>
+          </div>
           <button className="bulk-delete-btn" onClick={onBulkDelete}>Delete</button>
           <button className="bulk-clear-btn" onClick={onClearSelection}>Clear</button>
         </div>
