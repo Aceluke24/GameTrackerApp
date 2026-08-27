@@ -2,6 +2,7 @@
   "name": "game-vault",
   "version": "1.0.0",
   "description": "Your personal game backlog tracker",
+  "author": "Aceluke24 <aceluke24@gmail.com>",
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
