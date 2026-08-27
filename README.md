@@ -29,7 +29,7 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 ### Steam & IGDB Integration
 - Steam library import, enriched with HowLongToBeat completion times via IGDB — each account uses its own Steam API key + Steam ID (entered via a popup on Import, saved to Settings for next time), never one shared key
 - Shared IGDB metadata cache — completion-time/rating lookups are cached in Supabase and reused across all users, so the same game isn't re-fetched from IGDB every time someone adds it
-- IGDB access tokens auto-refresh in the background — no manual token regeneration every ~60 days
+- IGDB access tokens are minted and refreshed server-side by a Supabase Edge Function — the Twitch client secret never ships in the app, and there's no manual token regeneration every ~60 days
 - Steam import and bulk add both end with a results summary (added / already in vault / couldn't match / failed) instead of a single toast — and a failure partway through a batch no longer drops the games that already saved successfully
 
 ### Settings & Customization
@@ -52,20 +52,13 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 npm install
 ```
 
-### 2. Get your IGDB API keys (free)
-1. Go to https://dev.twitch.tv/console → create an app
-2. Copy your **Client ID** and **Client Secret**
-3. Copy `.env.example` to `.env` and paste both values in:
+### 2. Point the app at Supabase
+1. Create a project at https://supabase.com/dashboard
+2. From the project's **Connect** dialog, grab your **Project URL** and **anon/publishable key**, then:
 ```bash
 cp .env.example .env
 ```
-The app fetches and auto-refreshes its own IGDB access token using these —
-no manual token generation, and `.env` is gitignored so the secret never
-gets committed.
-
-### 3. Set up Supabase (free tier)
-1. Create a project at https://supabase.com/dashboard
-2. From the project's **Connect** dialog, grab your **Project URL** and **anon/publishable key**, and add them to `.env` as `SUPABASE_URL` and `SUPABASE_ANON_KEY`
+   and set `SUPABASE_URL` / `SUPABASE_ANON_KEY` in `.env`. The anon key is safe here — Row Level Security is what protects each user's data. `.env` is gitignored.
 3. Run the schema against your project (creates the `games`, `igdb_cache`, and `user_settings` tables, Row Level Security policies, table grants, and a self-service account-deletion function):
 ```bash
 psql "<your Postgres connection string from Connect → Session pooler>" -f supabase/migrations/0001_init.sql
@@ -77,6 +70,19 @@ psql "<same connection string>" -f supabase/migrations/0006_user_statuses.sql
 ```
    (Only needed once per Supabase project — not required for every developer machine, just whoever's setting up that project.)
 4. In the dashboard, go to **Authentication → URL Configuration → Redirect URLs** and add `gamevault://auth-callback`. This is what lets the "Confirm your email" link bring you back into the app directly (see Deep Linking below) instead of a dead browser tab.
+
+### 3. Deploy the IGDB Edge Function
+IGDB needs a Twitch app access token, minted from a Twitch **Client ID + Client Secret**. The secret must never ship inside the desktop app, so it lives server-side as a secret for the `igdb` Supabase Edge Function ([supabase/functions/igdb](supabase/functions/igdb/index.ts)). The app calls the function; the function attaches the credentials. It's `verify_jwt`-protected, so only signed-in Game Vault users can spend the IGDB quota.
+
+1. Get Twitch credentials at https://dev.twitch.tv/console → create an app → copy its **Client ID** and **Client Secret**
+2. Link the CLI to your project and push the function:
+```bash
+supabase login
+supabase link --project-ref <your-project-ref>
+supabase secrets set IGDB_CLIENT_ID=<client-id> IGDB_CLIENT_SECRET=<client-secret>
+supabase functions deploy igdb
+```
+   (Only needed once per Supabase project. To develop against it locally instead of the deployed copy, run `supabase functions serve igdb --env-file supabase/functions/.env` with those two vars in that file.)
 
 ### 4. (Optional) Get your Steam API key
 Not required for setup — each user pastes their own key + Steam ID into the app itself (via the popup on Settings → Import Steam), which links directly to https://steamcommunity.com/dev/apikey and https://store.steampowered.com/account/ to help you find both.
@@ -118,16 +124,18 @@ game-vault/
 │   ├── database.js      ← All Supabase queries (games, IGDB cache, user settings) live here
 │   ├── auth.js          ← Supabase Auth wrapper (sign up/in/out, session)
 │   ├── supabaseClient.js ← Main-process-only Supabase client
-│   └── secureStore.js   ← Encrypted local store — auth session + cached IGDB token
+│   └── secureStore.js   ← Encrypted local store — Supabase auth session
 ├── supabase/
-│   └── migrations/       ← SQL schema, RLS policies, and grants (run once per project)
+│   ├── migrations/       ← SQL schema, RLS policies, and grants (run once per project)
+│   └── functions/
+│       └── igdb/         ← Edge Function: holds the Twitch secret, proxies IGDB calls
 ├── build/
 │   └── icon.png        ← Source app icon for electron-builder
 ├── public/
 │   └── icons8-*.png     ← App icon (favicon, dock/window icon)
 ├── src/
 │   ├── api/
-│   │   ├── igdb.js       ← IGDB game search + time to beat, with cache read-through
+│   │   ├── igdb.js       ← IGDB game search + time to beat (via the igdb Edge Function), with cache read-through
 │   │   ├── steam.js      ← Steam library import
 │   │   └── errors.js     ← Strips Electron's IPC error boilerplate for display
 │   ├── components/

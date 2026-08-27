@@ -16,9 +16,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteGames: (ids)        => ipcRenderer.invoke('games:deleteMany', ids),
   searchGames: (query)      => ipcRenderer.invoke('games:search', query),
 
-  // IGDB auth — main process holds the client secret and refreshes the
-  // token as needed; the renderer just asks for a currently-valid one.
-  getIGDBToken: () => ipcRenderer.invoke('igdb:getToken'),
+  // IGDB — the renderer names an endpoint + query; the main process forwards
+  // it to our Supabase Edge Function, which owns the Twitch client secret
+  // and mints the IGDB token server-side.
+  igdbQuery: (endpoint, query) => ipcRenderer.invoke('igdb:query', endpoint, query),
   getCachedIgdbGame: (igdbId) => ipcRenderer.invoke('igdb:getCached', igdbId),
   setCachedIgdbGame: (entry) => ipcRenderer.invoke('igdb:setCached', entry),
 

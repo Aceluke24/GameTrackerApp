@@ -16,56 +16,54 @@ if (!app.requestSingleInstanceLock()) {
 
 app.setName('Game Vault');
 // Keep the on-disk data folder pinned to its original location so renaming
-// the app's display name never orphans the local encrypted store (session +
-// cached IGDB token — the game library itself now lives in Supabase).
+// the app's display name never orphans the local encrypted store (the
+// Supabase session — the game library itself lives in Supabase).
 app.setPath('userData', path.join(app.getPath('appData'), 'vaultlog'));
 
 const db = require('./database');
 const auth = require('./auth');
 const { fetchWithTimeout, isNetworkError, NETWORK_ERROR_PREFIX } = require('./networkError');
 
-const IGDB_CLIENT_ID = process.env.IGDB_CLIENT_ID;
-const IGDB_CLIENT_SECRET = process.env.IGDB_CLIENT_SECRET;
-const TOKEN_REFRESH_MARGIN_MS = 24 * 60 * 60 * 1000;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
-// IGDB access tokens last ~60 days. Rather than requiring a manual re-paste
-// every couple months, fetch one here — main process only, so the client
-// secret never ships inside the renderer bundle — cache it locally, and
-// refresh it once it's within a day of expiring.
-async function getValidIgdbToken() {
-  const storedToken = db.getSetting('igdb_access_token');
-  const storedExpiry = Number(db.getSetting('igdb_token_expires_at') || 0);
-
-  if (storedToken && storedExpiry > Date.now() + TOKEN_REFRESH_MARGIN_MS) {
-    return storedToken;
+// IGDB is reached through our Supabase Edge Function (supabase/functions/
+// igdb). The function holds the Twitch client secret and mints the IGDB
+// access token server-side, so nothing sensitive ships in the app. We
+// attach the signed-in user's access token so the function can confirm the
+// caller is a real Game Vault user before spending our shared IGDB quota.
+async function igdbQuery(endpoint, query) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('SUPABASE_URL / SUPABASE_ANON_KEY are not set — add them to your .env file.');
   }
 
-  if (!IGDB_CLIENT_ID || !IGDB_CLIENT_SECRET) {
-    throw new Error('IGDB_CLIENT_ID / IGDB_CLIENT_SECRET are not set — add them to your .env file.');
+  const session = await auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('You need to be signed in to search IGDB.');
   }
 
   let response;
   try {
-    response = await fetchWithTimeout('https://id.twitch.tv/oauth2/token', {
+    response = await fetchWithTimeout(`${SUPABASE_URL}/functions/v1/igdb`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: IGDB_CLIENT_ID,
-        client_secret: IGDB_CLIENT_SECRET,
-        grant_type: 'client_credentials',
-      }),
-    }, 10000);
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ endpoint, query }),
+    }, 15000);
   } catch (err) {
     throw isNetworkError(err) ? new Error(NETWORK_ERROR_PREFIX + err.message) : err;
   }
-  if (!response.ok) throw new Error(`Twitch token request failed: ${response.statusText}`);
 
-  const data = await response.json();
-  const expiresAt = Date.now() + data.expires_in * 1000;
-  db.setSetting('igdb_access_token', data.access_token);
-  db.setSetting('igdb_token_expires_at', String(expiresAt));
-
-  return data.access_token;
+  const text = await response.text();
+  if (!response.ok) {
+    let message = text;
+    try { message = JSON.parse(text).error ?? text; } catch { /* not JSON — use raw text */ }
+    throw new Error(`IGDB lookup failed: ${message}`);
+  }
+  return JSON.parse(text);
 }
 
 let mainWindow = null;
@@ -221,10 +219,7 @@ ipcMain.handle('games:updatePlatformMany', (_, ids, platform) => db.updateGamesP
 ipcMain.handle('games:deleteMany', (_, ids) => db.deleteGames(ids));
 ipcMain.handle('games:search', (_, query) => db.searchGames(query));
 
-ipcMain.handle('igdb:getToken', async () => ({
-  accessToken: await getValidIgdbToken(),
-  clientId: IGDB_CLIENT_ID,
-}));
+ipcMain.handle('igdb:query', (_, endpoint, query) => igdbQuery(endpoint, query));
 ipcMain.handle('igdb:getCached', (_, igdbId) => db.getCachedIgdbGame(igdbId));
 ipcMain.handle('igdb:setCached', (_, entry) => db.setCachedIgdbGame(entry));
 

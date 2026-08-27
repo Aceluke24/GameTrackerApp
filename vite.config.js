@@ -9,14 +9,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/igdb': {
-        target: 'https://api.igdb.com/v4',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/igdb/, ''),
-        // No header injection here — the renderer already sends a live
-        // Client-ID/Authorization pair (see src/api/igdb.js), and the proxy
-        // just forwards it through to dodge the browser's CORS check.
-      },
+      // IGDB no longer needs a dev proxy — those calls now go through the
+      // main process to our Supabase Edge Function (see src/api/igdb.js).
       '/steam': {
         target: 'https://api.steampowered.com',
         changeOrigin: true,

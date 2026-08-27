@@ -1,59 +1,18 @@
-import { fetchWithTimeout, markNetworkError } from './networkError';
+import { markNetworkError } from './networkError';
 
-const IGDB_BASE = import.meta.env.DEV ? '/igdb' : 'https://api.igdb.com/v4';
-
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-// The client secret needed to mint/refresh these tokens must never ship in
-// the renderer bundle, so the main process owns it — it hands back a
-// currently-valid token, refreshing it behind the scenes if needed. Cached
-// in memory for the session so every search doesn't round-trip an IPC call.
-let cachedCredentials = null;
-
-async function getIgdbCredentials() {
-  if (!window.electronAPI?.getIGDBToken) {
+// IGDB is reached through our Supabase Edge Function (supabase/functions/
+// igdb), routed via the main process. The function owns the Twitch client
+// secret, mints the IGDB access token, and handles rate-limit (429) retries
+// server-side — so here we just name the endpoint and the query we want.
+async function igdbPost(endpoint, query) {
+  if (!window.electronAPI?.igdbQuery) {
     throw new Error('IGDB requires the Electron app (run via `npm run dev`), not a plain browser preview.');
   }
-  if (!cachedCredentials) {
-    cachedCredentials = await window.electronAPI.getIGDBToken();
-  }
-  return cachedCredentials;
-}
-
-// IGDB caps requests to ~4/sec. A batch of lookups (e.g. Steam import) fires
-// faster than that, so retry with backoff instead of silently losing data
-// for whichever games land on the rejected requests.
-async function igdbPost(endpoint, body, retries = 3) {
-  const { accessToken, clientId } = await getIgdbCredentials();
-  let response;
   try {
-    response = await fetchWithTimeout(`${IGDB_BASE}/${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain',
-        'Client-ID': clientId,
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body,
-    }, 10000);
+    return await window.electronAPI.igdbQuery(endpoint, query);
   } catch (err) {
     throw markNetworkError(err, 'Could not reach IGDB.');
   }
-  if (response.status === 429 && retries > 0) {
-    await sleep(750 * (4 - retries));
-    return igdbPost(endpoint, body, retries - 1);
-  }
-  if (response.status === 401) {
-    // The cached token may have been revoked out-of-band — drop it so the
-    // next call forces a fresh fetch through the main process.
-    cachedCredentials = null;
-  }
-  if (!response.ok) {
-    const err = await response.text();
-    console.error(`IGDB ${endpoint} error:`, err);
-    throw new Error(`IGDB error: ${response.statusText}`);
-  }
-  return response.json();
 }
 
 // IGDB's time-to-beat data is crowd-submitted and occasionally has wild

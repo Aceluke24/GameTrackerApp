@@ -1,5 +1,4 @@
 const supabase = require('./supabaseClient');
-const secureStore = require('./secureStore');
 const { isNetworkError, NETWORK_ERROR_PREFIX } = require('./networkError');
 
 // Supabase errors are plain objects, not real Error instances — thrown as-is
@@ -12,17 +11,6 @@ function check(error) {
   if (!error) return;
   const message = error.message || JSON.stringify(error);
   throw new Error(isNetworkError(error) ? NETWORK_ERROR_PREFIX + message : message);
-}
-
-// App-wide settings (currently just the cached IGDB access token) — not
-// per-user data, so this stays in the local encrypted store rather than
-// Supabase.
-function getSetting(key) {
-  return secureStore.getItem(key);
-}
-
-function setSetting(key, value) {
-  secureStore.setItem(key, value);
 }
 
 async function getAllGames() {
@@ -132,7 +120,6 @@ async function setUserStatuses(statuses) {
 module.exports = {
   getAllGames, addGame, updateGame, deleteGame, deleteAllGames,
   updateGamesStatus, updateGamesPlatform, deleteGames, searchGames,
-  getSetting, setSetting,
   getCachedIgdbGame, setCachedIgdbGame,
   getUserSettings, setUserSettings,
   getUserStatuses, setUserStatuses,
