@@ -25,7 +25,7 @@
     "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.yourname.gamevault",
+    "appId": "com.aceluke24.gamevault",
     "productName": "Game Vault",
     "directories": {
       "output": "release"
@@ -43,7 +43,8 @@
       "target": "nsis"
     },
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "identity": null
     },
     "linux": {
       "target": "AppImage"

@@ -3,7 +3,10 @@ const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 
-const isDev = process.env.NODE_ENV !== 'production';
+// app.isPackaged is false when run via `npm run dev` / `electron .` and true
+// inside a built .dmg/.exe/.AppImage — a reliable signal that doesn't depend
+// on NODE_ENV being set (the `dist` script doesn't set it).
+const isDev = !app.isPackaged;
 const appIconPath = path.join(__dirname, isDev ? '../public' : '../dist', 'icons8-closed-treasure-chest-96.png');
 const PROTOCOL = 'gamevault';
 
@@ -23,9 +26,7 @@ app.setPath('userData', path.join(app.getPath('appData'), 'vaultlog'));
 const db = require('./database');
 const auth = require('./auth');
 const { fetchWithTimeout, isNetworkError, NETWORK_ERROR_PREFIX } = require('./networkError');
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const { SUPABASE_URL, SUPABASE_ANON_KEY } = require('./config');
 
 // IGDB is reached through our Supabase Edge Function (supabase/functions/
 // igdb). The function holds the Twitch client secret and mints the IGDB
@@ -33,10 +34,6 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 // attach the signed-in user's access token so the function can confirm the
 // caller is a real Game Vault user before spending our shared IGDB quota.
 async function igdbQuery(endpoint, query) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    throw new Error('SUPABASE_URL / SUPABASE_ANON_KEY are not set — add them to your .env file.');
-  }
-
   const session = await auth.getSession();
   if (!session?.access_token) {
     throw new Error('You need to be signed in to search IGDB.');
