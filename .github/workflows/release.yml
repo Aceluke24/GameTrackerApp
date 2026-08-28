@@ -73,7 +73,7 @@ jobs:
             release/*.zip
             release/*.exe
             release/*.AppImage
-            release/*.yml
+            release/latest*.yml
             release/*.blockmap
 
   release:

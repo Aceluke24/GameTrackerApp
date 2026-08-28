@@ -49,8 +49,12 @@
       "owner": "Aceluke24",
       "repo": "GameTrackerApp"
     },
+    "artifactName": "Game-Vault-${version}-${arch}.${ext}",
     "win": {
       "target": "nsis"
+    },
+    "nsis": {
+      "artifactName": "Game-Vault-Setup-${version}-${arch}.${ext}"
     },
     "mac": {
       "target": [
