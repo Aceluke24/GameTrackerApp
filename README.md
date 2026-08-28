@@ -2,12 +2,22 @@
 
 Your personal game backlog tracker — a desktop app built with Electron + React + Supabase, with your own account and library synced across every device you install it on.
 
+**Quick links**
+
+| I want to… | Go to |
+|---|---|
+| Run the app locally | [Running](#running) |
+| Set up a fresh Supabase project | [Setup](#setup) |
+| Ship a new version to everyone | [Releasing a new version](#releasing-a-new-version) |
+| Understand what's published, to whom, and how updates work | [Distribution status](#distribution-status) |
+| Full release runbook — versioning, CI cost, gotchas, troubleshooting | [RELEASING.md](RELEASING.md) |
+
 ## Features
 
 ### Accounts & Sync
 - Sign up / sign in with email + password, powered by Supabase Auth — shown as a tabbed toggle so it's clear at a glance which mode you're in
-- Confirming your email brings you straight back into the app via deep link (`gamevault://`), not a dead browser tab
-- "Forgot password?" on the Sign In tab sends a reset email — clicking it deep-links back into the app to a dedicated "set a new password" screen (with a "Skip and Sign In" option if you'd rather not change it after all)
+- Signing up logs you straight in — email confirmation is turned off for this deployment (it's a Supabase project setting; the app handles either mode, and still parses the confirmation deep link if you re-enable it)
+- "Forgot password?" on the Sign In tab sends a reset email — clicking it deep-links (`gamevault://`) back into the app to a dedicated "set a new password" screen (with a "Skip and Sign In" option if you'd rather not change it after all)
 - Change your password any time from Settings, without needing the email flow
 - Each account's library is private, enforced by Postgres Row Level Security (not just app-level filtering)
 - Your library syncs across every device you're signed into — no more per-device local database
@@ -70,7 +80,8 @@ psql "<same connection string>" -f supabase/migrations/0005_next_up.sql
 psql "<same connection string>" -f supabase/migrations/0006_user_statuses.sql
 ```
    (Only needed once per Supabase project — not required for every developer machine, just whoever's setting up that project.)
-4. In the dashboard, go to **Authentication → URL Configuration → Redirect URLs** and add `gamevault://auth-callback`. This is what lets the "Confirm your email" link bring you back into the app directly (see Deep Linking below) instead of a dead browser tab.
+4. In the dashboard, go to **Authentication → URL Configuration → Redirect URLs** and add `gamevault://auth-callback`. This is what lets the password-reset link (and the email-confirmation link, if you turn confirmation back on) open in the app directly instead of a dead browser tab — see [Deep Linking](#deep-linking) below.
+5. In **Authentication → Providers → Email**, turn **off** "Confirm email". A downloaded app for people you know doesn't need verified emails, and Supabase's built-in email sender is rate-limited to ~2/hour anyway. (Password-reset emails still go through that sender — fine for occasional use; if one doesn't arrive you can reset a password directly from **Authentication → Users**.)
 
 ### 3. Deploy the IGDB Edge Function
 IGDB needs a Twitch app access token, minted from a Twitch **Client ID + Client Secret**. The secret must never ship inside the desktop app, so it lives server-side as a secret for the `igdb` Supabase Edge Function ([supabase/functions/igdb](supabase/functions/igdb/index.ts)). The app calls the function; the function attaches the credentials. It's `verify_jwt`-protected, so only signed-in Game Vault users can spend the IGDB quota.
@@ -92,49 +103,72 @@ Not required for setup — each user pastes their own key + Steam ID into the ap
 
 ## Running
 
-### Development (browser preview, no Electron)
-```bash
-npx vite
-# Open http://localhost:5173
-# Note: no auth/sync without Electron — falls back to mock data
-```
-
-### Development (full Electron app)
+### Dev — full app (what you'll normally use)
 ```bash
 npm run dev
 ```
+Runs the React dev server and opens the Electron app pointed at it, with live
+reload. Quit any *installed* copy of Game Vault first — dev and the installed
+app share one data folder and only one can run at a time.
 
-### Build a distributable installer
+### Dev — UI only, in a browser
+```bash
+npx vite            # then open http://localhost:5173
+```
+Fast for pure UI work, but there's **no login or sync** (that needs Electron)
+— it shows mock data.
+
+### Build an installer locally (just for testing)
 ```bash
 npm run dist
-# Output goes to /release folder
-# Windows: .exe installer
-# Mac: .dmg
-# Linux: .AppImage
+```
+Produces an installer in `release/` for the OS you're on (`.dmg` on macOS,
+`.exe` on Windows, `.AppImage` on Linux). Nothing is uploaded. Use this to
+sanity-check a build before tagging a real release.
+
+---
+
+## Releasing a new version
+
+Real releases are built by CI, not by hand. The flow:
+
+```bash
+git status                 # must be clean
+npm version patch          # or "minor" — bumps package.json, commits, tags vX.Y.Z
+git push --follow-tags     # pushing the tag is what triggers the build
 ```
 
-For the full release process — version bumping, keeping old builds, when to
-redeploy the Edge Function vs. rebuild the app, code signing, and
-troubleshooting — see [RELEASING.md](RELEASING.md).
+Pushing the tag starts [GitHub Actions](.github/workflows/release.yml), which:
 
-### Distributing to others
+1. builds macOS + Windows + Linux installers (each on its own runner), then
+2. collects them into a single **draft** [GitHub Release](https://github.com/Aceluke24/GameTrackerApp/releases).
 
-Pushing a `vX.Y.Z` tag triggers [GitHub Actions](.github/workflows/release.yml)
-to build macOS, Windows, and Linux installers and attach them to a draft
-[GitHub Release](https://github.com/Aceluke24/GameTrackerApp/releases). You
-add notes and publish it.
+Then, on GitHub: open the draft, add release notes, and click **Publish**.
 
-The app self-updates from published Releases via `electron-updater`, **but**:
+Watch a run: repo → **Actions** tab. Takes ~10–15 min.
 
-- **The repo is currently private**, so release assets are only downloadable
-  by collaborators, and auto-update can't fetch them. For now: invite testers
-  to the repo, or hand them the installer directly.
-- **Auto-update goes live when the repo is made public** (planned — the code
-  is safe to open, no secrets are committed). At that point Windows and Linux
-  update themselves; macOS still needs code signing (an Apple Developer
-  account) before its auto-update works.
+> **Full detail** — versioning rules, the CI cost on a private repo, what
+> needs a Supabase redeploy vs. an app rebuild, gotchas, and
+> troubleshooting — is in **[RELEASING.md](RELEASING.md)**.
 
-Full process and the public-switch steps: [RELEASING.md](RELEASING.md).
+---
+
+## Distribution status
+
+| | |
+|---|---|
+| **Platforms** | macOS (Apple Silicon), Windows (x64), Linux (AppImage) — built by CI on every version tag |
+| **Where** | [GitHub Releases](https://github.com/Aceluke24/GameTrackerApp/releases) |
+| **Repo visibility** | **Private.** Only people invited to the repo can download releases. Invite testers, or send them the installer file directly. |
+| **Code signing** | None. First launch shows an "unidentified developer" warning: macOS → right-click the app → **Open**; Windows → **More info → Run anyway**. |
+| **Auto-update** | Wired in (`electron-updater`) but **dormant** — a private repo's releases can't be fetched without a token. |
+
+**Making the repo public** (planned, when ready for a wider audience) turns
+auto-update on for Windows and Linux automatically — no code change. The code
+is safe to open: the only committed Supabase value is the publishable key
+(public by design), and the Twitch secret lives only in the Edge Function.
+macOS auto-update additionally needs code signing (a paid Apple Developer
+account). Steps are in [RELEASING.md](RELEASING.md#making-the-repo-public-when-ready).
 
 ---
 
@@ -142,19 +176,23 @@ Full process and the public-switch steps: [RELEASING.md](RELEASING.md).
 
 ```
 game-vault/
+├── .github/workflows/
+│   └── release.yml      ← CI: build all 3 platforms on a version tag, draft a Release
 ├── electron/
-│   ├── main.js          ← Electron entry point, window creation, IPC handlers
+│   ├── main.js          ← Electron entry point, window creation, IPC handlers, auto-update
 │   ├── preload.js       ← Secure bridge between React and Node.js
-│   ├── database.js      ← All Supabase queries (games, IGDB cache, user settings) live here
+│   ├── config.js        ← Supabase URL + key (baked into builds; .env wins in dev)
+│   ├── database.js      ← All Supabase queries; retries once through a silent token refresh on auth errors
 │   ├── auth.js          ← Supabase Auth wrapper (sign up/in/out, session)
 │   ├── supabaseClient.js ← Main-process-only Supabase client
+│   ├── networkError.js  ← Shared error classification (network vs. auth vs. other)
 │   └── secureStore.js   ← Encrypted local store — Supabase auth session
 ├── supabase/
 │   ├── migrations/       ← SQL schema, RLS policies, and grants (run once per project)
 │   └── functions/
 │       └── igdb/         ← Edge Function: holds the Twitch secret, proxies IGDB calls
 ├── build/
-│   └── icon.png        ← Source app icon for electron-builder
+│   └── icon.png        ← Source app icon for electron-builder (auto-converted to .icns/.ico)
 ├── public/
 │   └── icons8-*.png     ← App icon (favicon, dock/window icon)
 ├── src/
@@ -183,17 +221,21 @@ game-vault/
 │   └── styles.css      ← Global CSS variables + base styles
 ├── index.html
 ├── vite.config.js
-└── package.json
+├── package.json        ← deps + the electron-builder "build" config
+├── RELEASING.md        ← the full release + distribution runbook
+└── README.md
 ```
 
 ---
 
 ## Deep Linking
-Confirming your email brings you straight back into the running app via a custom `gamevault://` URL
-scheme, instead of leaving you on a browser tab. `electron/main.js` registers the scheme (automatic for
-packaged builds via the `protocols` entry in `package.json`; dev mode needs the app relaunched through
-Electron manually, handled there too) and hands off to `electron/auth.js` to establish the session from
-the tokens Supabase includes in the redirect.
+Auth emails from Supabase (currently just password-reset; also email
+confirmation if you re-enable it) link to a custom `gamevault://` URL scheme,
+so clicking one opens the running app instead of leaving you on a browser
+tab. `electron/main.js` registers the scheme (automatic for packaged builds
+via the `protocols` entry in `package.json`; dev mode relaunches through
+Electron, handled there too) and hands off to `electron/auth.js` to establish
+the session from the tokens Supabase includes in the redirect.
 
 **Note for dev mode:** `npm run dev` starts a fresh process each time, and OS-level protocol registration
 can be flaky against a moving dev binary — if clicking the email link doesn't bring the app to the front,
