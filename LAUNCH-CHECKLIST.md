@@ -14,9 +14,9 @@ hour, total, across all users**. With email confirmation on, if a few
 friends sign up around the same time, some won't get their confirmation
 link and can't finish.
 
-Pick **one** of these:
-
-### Option A — Turn off email confirmation (simplest, recommended for a friends app)
+**Decision: turn off email confirmation.** A downloaded app for people you
+know doesn't need verified emails, and every custom-email setup has the same
+failure mode (the email never arrives / lands in spam).
 
 1. Go to https://supabase.com/dashboard/project/xqlvducitbenqphuvjch/auth/providers
 2. Under **Email**, turn **off** "Confirm email".
@@ -27,21 +27,25 @@ already handles this — no code change needed.
 
 - [ ] Done
 
-### Option B — Add a real email provider (keep confirmation, verified emails)
+### About password resets
 
-1. Make a free account at https://resend.com
-2. In Resend, add and verify a domain (or use their test domain to start).
-3. Create an API key in Resend.
-4. Go to https://supabase.com/dashboard/project/xqlvducitbenqphuvjch/settings/auth
-5. Scroll to **SMTP Settings** → enable **Custom SMTP** and fill in:
-   - Host: `smtp.resend.com`
-   - Port: `465`
-   - Username: `resend`
-   - Password: your Resend API key
-   - Sender email / name: whatever you want it to say
-6. Click **Save**.
+Turning off confirmation does **not** disable the "Forgot password?" email —
+that keeps working through Supabase's built-in sender (2/hour). That's fine
+because:
 
-- [ ] Done
+- Logged-in users can change their password in Settings (no email).
+- Resets happen one at a time — the 2/hour limit is a burst problem, not a
+  single-user problem.
+- If a reset email doesn't reach someone, fix it yourself: Supabase
+  dashboard → Authentication → Users → pick the person → set a new password
+  or send a recovery link directly.
+
+### Later, if you outgrow this
+
+If you get enough users that the 2/hour limit on resets becomes real, set up
+custom SMTP then: either a Gmail account as the SMTP server (no domain, ~5
+min, but deliverability is so-so), or Resend/Mailgun with a ~$10/yr domain
+(proper deliverability). Not worth doing now.
 
 ---
 
