@@ -117,6 +117,26 @@ For the full release process — version bumping, keeping old builds, when to
 redeploy the Edge Function vs. rebuild the app, code signing, and
 troubleshooting — see [RELEASING.md](RELEASING.md).
 
+### Distributing to others
+
+Builds are published as [GitHub Releases](https://github.com/Aceluke24/GameTrackerApp/releases),
+each with the `.dmg` attached and tied to a `vX.Y.Z` git tag.
+
+**The repo is currently private**, which means release assets can only be
+downloaded by people added as collaborators. For now, hand the `.dmg` to
+testers directly (AirDrop / a shared drive) and use the Releases page as the
+version record.
+
+**Plan: make the repo public** once it's ready for a wider audience, so
+anyone can download a release without a GitHub account. The code is safe to
+open up — the only committed Supabase value is the publishable key (public
+by design; Row Level Security protects user data), and the Twitch/IGDB
+secret lives only as a Supabase Edge Function secret, never in the repo. To
+flip it: repo **Settings → Danger Zone → Change repository visibility**.
+After going public, add [`electron-updater`](https://www.electron.build/auto-update)
+so installed apps update themselves from Releases instead of manual
+reinstalls.
+
 ---
 
 ## Project Structure
