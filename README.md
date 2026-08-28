@@ -14,6 +14,7 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 - Logging in always lands on the games view, regardless of which page you were on when you last signed out
 - Errors and confirmations use in-app toasts and dialogs instead of native browser popups, with plain-language wording for common cases (wrong password, reusing your old password, duplicate accounts, etc.) instead of raw technical error text
 - A persistent banner appears whenever you're offline or Supabase/IGDB can't be reached, and clears itself automatically once you're back — every network call has a timeout so a bad connection fails fast instead of hanging
+- If your login token goes stale (e.g. the laptop slept past its expiry), the app silently refreshes it and retries — you're only sent back to the sign-in screen if the session is genuinely unrecoverable
 
 ### Game Tracking
 - Duplicate detection warns before adding a game that's already in your vault, whether added manually or via Steam import

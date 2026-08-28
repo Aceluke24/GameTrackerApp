@@ -6,6 +6,23 @@
 // starts with it.
 const NETWORK_ERROR_PREFIX = 'NETWORK_ERROR:';
 
+// Same idea as NETWORK_ERROR_PREFIX, for the other case the renderer needs
+// to react to specially: the stored login is no longer valid and a silent
+// refresh couldn't save it (see database.js's query()). The renderer drops
+// to the login screen when it sees this.
+const SESSION_EXPIRED_PREFIX = 'SESSION_EXPIRED:';
+
+// PostgREST rejects a bad JWT with code PGRST301, or a message mentioning
+// JWT/JWS (e.g. "JWT expired", "JWSError JWSInvalidSignature"). auth-js
+// surfaces a missing/blank session as AuthSessionMissingError. Any of these
+// means "re-authenticate", as opposed to a transient network or data error.
+function isAuthError(err) {
+  if (!err) return false;
+  if (err.code === 'PGRST301' || err.code === 'PGRST302') return true;
+  if (err.name === 'AuthSessionMissingError') return true;
+  return /jw[stke]|token is expired|invalid(?:[_\s]?)(?:signature|claim|token)/i.test(err.message || '');
+}
+
 const NETWORK_ERROR_CODES = new Set([
   'ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'EAI_AGAIN',
   'ECONNRESET', 'ENETUNREACH', 'EHOSTUNREACH', 'ENETDOWN',
@@ -37,4 +54,7 @@ async function fetchWithTimeout(url, options = {}, ms = 15000) {
   }
 }
 
-module.exports = { NETWORK_ERROR_PREFIX, isNetworkError, fetchWithTimeout };
+module.exports = {
+  NETWORK_ERROR_PREFIX, SESSION_EXPIRED_PREFIX,
+  isNetworkError, isAuthError, fetchWithTimeout,
+};

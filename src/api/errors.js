@@ -1,4 +1,4 @@
-import { NETWORK_ERROR_PREFIX } from './networkError';
+import { NETWORK_ERROR_PREFIX, SESSION_EXPIRED_PREFIX } from './networkError';
 
 // Electron's ipcRenderer.invoke() wraps any error a main-process handler
 // throws as "Error invoking remote method '<channel>': Error: <message>" —
@@ -20,6 +20,15 @@ export function onNetworkTrouble(callback) {
   return () => listeners.delete(callback);
 }
 
+// Fires when describeError sees a SESSION_EXPIRED-prefixed failure — the
+// stored login is dead and the main process's silent refresh couldn't save
+// it. App.jsx subscribes to send the user back to the login screen.
+const sessionExpiredListeners = new Set();
+export function onSessionExpired(callback) {
+  sessionExpiredListeners.add(callback);
+  return () => sessionExpiredListeners.delete(callback);
+}
+
 // The one place every catch block should get its toast text from — folds in
 // both IPC errors (prefixed by electron/networkError.js's check()) and
 // direct renderer fetch errors (prefixed by src/api/networkError.js's
@@ -29,10 +38,17 @@ export function describeError(err, fallback = 'Something went wrong. Please try 
   const cleaned = cleanErrorMessage(err);
   const offline = cleaned.startsWith(NETWORK_ERROR_PREFIX);
   if (offline) listeners.forEach(cb => cb());
+
+  const sessionExpired = cleaned.startsWith(SESSION_EXPIRED_PREFIX);
+  if (sessionExpired) sessionExpiredListeners.forEach(cb => cb());
+
   return {
     offline,
+    sessionExpired,
     message: offline
       ? "Can't reach the server — check your connection and try again."
-      : (cleaned || fallback),
+      : sessionExpired
+        ? 'Your session expired — please sign in again.'
+        : (cleaned || fallback),
   };
 }

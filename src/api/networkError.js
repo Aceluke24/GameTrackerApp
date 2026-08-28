@@ -4,6 +4,10 @@
 // small helper beats introducing one just for this.
 export const NETWORK_ERROR_PREFIX = 'NETWORK_ERROR:';
 
+// Twin of electron/networkError.js's constant — main.js's check() prepends
+// this when the stored login is dead and a silent refresh couldn't save it.
+export const SESSION_EXPIRED_PREFIX = 'SESSION_EXPIRED:';
+
 // Browser fetch failures don't expose OS-level error codes the way Node's
 // does (no .cause.code) — Chromium just gives a generic "Failed to fetch" /
 // "NetworkError" message. Detection here leans on message text plus

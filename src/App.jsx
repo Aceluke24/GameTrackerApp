@@ -19,7 +19,7 @@ import './App.css';
 import { importSteamLibrary, enrichWithHLTB } from './api/steam';
 import { gamesToCSV, gamesToJSON, saveExportFile } from './api/export';
 import { applyColorScheme } from './theme';
-import { describeError, onNetworkTrouble } from './api/errors';
+import { describeError, onNetworkTrouble, onSessionExpired } from './api/errors';
 import useOnlineStatus from './hooks/useOnlineStatus';
 
 // Matches IGDB's genre taxonomy so manually picked genres line up with
@@ -139,6 +139,18 @@ export default function App() {
     setApiOffline(true);
     clearTimeout(apiOfflineTimer.current);
     apiOfflineTimer.current = setTimeout(() => setApiOffline(false), 20000);
+  }), []);
+
+  // The main process already tries a silent token refresh before surfacing
+  // an auth failure (see electron/database.js) — reaching here means that
+  // couldn't save the session, so send the user to the login screen rather
+  // than leave them on a half-broken library.
+  useEffect(() => onSessionExpired(() => {
+    setGames([]);
+    setStatuses(DEFAULT_STATUSES);
+    setSession(null);
+    window.electronAPI?.signOut().catch(() => {});
+    showToast('Your session expired — please sign in again.', 'error');
   }), []);
   const isOffline = !online || apiOffline;
   const wasOnlineRef = useRef(online);
