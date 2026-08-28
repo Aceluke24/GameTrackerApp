@@ -1,162 +1,101 @@
 # Launch checklist
 
-The remaining work to hand Game Vault to other people. Do steps 1 and 2.
-Steps 3–5 are "when you need them." Delete this file once you're done.
+Getting Game Vault into other people's hands. Most of this is done — see the
+status below. Delete this file once the "Left to do" list is clear.
 
-Run all commands from `~/GameTrackerApp`.
-
----
-
-## Step 1 — Handle signup emails
-
-**The problem:** Supabase's built-in email sender allows only **2 emails per
-hour, total, across all users**. With email confirmation on, if a few
-friends sign up around the same time, some won't get their confirmation
-link and can't finish.
-
-**Decision: turn off email confirmation.** A downloaded app for people you
-know doesn't need verified emails, and every custom-email setup has the same
-failure mode (the email never arrives / lands in spam).
-
-1. Go to https://supabase.com/dashboard/project/xqlvducitbenqphuvjch/auth/providers
-2. Under **Email**, turn **off** "Confirm email".
-3. Click **Save**.
-
-Result: signing up logs the person straight in, no email involved. The app
-already handles this — no code change needed.
-
-- [ ] Done
-
-### About password resets
-
-Turning off confirmation does **not** disable the "Forgot password?" email —
-that keeps working through Supabase's built-in sender (2/hour). That's fine
-because:
-
-- Logged-in users can change their password in Settings (no email).
-- Resets happen one at a time — the 2/hour limit is a burst problem, not a
-  single-user problem.
-- If a reset email doesn't reach someone, fix it yourself: Supabase
-  dashboard → Authentication → Users → pick the person → set a new password
-  or send a recovery link directly.
-
-### Later, if you outgrow this
-
-If you get enough users that the 2/hour limit on resets becomes real, set up
-custom SMTP then: either a Gmail account as the SMTP server (no domain, ~5
-min, but deliverability is so-so), or Resend/Mailgun with a ~$10/yr domain
-(proper deliverability). Not worth doing now.
+Run commands from `~/GameTrackerApp`. Full detail on the release process is in
+[RELEASING.md](RELEASING.md).
 
 ---
 
-## Step 2 — Build the version you'll share
+## Done
 
-The `.dmg` currently in `release/` is old and missing the session-refresh
-fix. Build a fresh one.
-
-1. Make sure everything's committed and `npm run dev` is **fully stopped**:
-   ```bash
-   git status                                        # should say "working tree clean"
-   pgrep -fl "GameTrackerApp/node_modules/electron"   # should print nothing
-   ```
-2. Bump the version and build:
-   ```bash
-   npm version minor
-   npm run dist
-   ```
-3. Test the result:
-   - Open `release/Game Vault-1.1.0-arm64.dmg`
-   - Drag **Game Vault** to Applications
-   - **Right-click the app → Open → Open** (first launch only; it's unsigned)
-   - Sign up as a brand-new test account, confirm the library loads, search
-     for a game
-4. Archive the `.dmg` you just tested:
-   ```bash
-   mkdir -p ~/GameVault-releases
-   mv "release/Game Vault-1.1.0-arm64.dmg" ~/GameVault-releases/
-   ```
-
-- [ ] New build tested and archived
-
-_(Full details on this flow: [RELEASING.md](RELEASING.md))_
+- [x] **Supabase config baked into the build** — `electron/config.js`, so a
+  packaged app knows which project to talk to without a `.env` file.
+- [x] **IGDB secret moved server-side** — the `igdb` Supabase Edge Function
+  holds the Twitch secret; deployed and working.
+- [x] **Email confirmation turned off** — signups log straight in. (Password
+  resets still use Supabase's built-in 2/hour sender, which is fine — see
+  "Password resets" below.)
+- [x] **v1.1.0 built, tested, and released** on GitHub with the macOS `.dmg`.
+- [x] **GitHub Actions CI** — [`.github/workflows/release.yml`](.github/workflows/release.yml)
+  builds macOS + Windows + Linux on every version tag and uploads them to a
+  draft release.
+- [x] **Auto-update wired in** — `electron-updater` in `electron/main.js`.
+  Dormant until the repo is public (see "Left to do").
+- [x] **Distribution** — invite friends to the private repo; they download
+  installers from the Releases page.
 
 ---
 
-## Step 3 — Get it to people
+## Left to do
 
-### For 2–3 people: just send the file
+### 1. Prove the CI pipeline works
 
-- AirDrop the `.dmg` from `~/GameVault-releases/`, or put it in a shared
-  Google Drive / Dropbox folder.
-- Tell them: **right-click → Open → Open** the first time (a plain
-  double-click won't show the "Open anyway" button).
-- Prefer AirDrop over a download link — files downloaded through a browser
-  get an extra macOS quarantine flag that makes the warning stickier.
+You added the workflow but haven't run it yet. Next release will test it:
 
-- [ ] Sent
-
-### For more than that: GitHub Releases
-
-1. Create a new **private** repo at https://github.com/new (name it
-   `GameTrackerApp`, no README/gitignore/license — the repo already has them).
-2. Connect and push:
-   ```bash
-   git remote add origin https://github.com/Aceluke24/GameTrackerApp.git
-   git push -u origin main
-   git push --tags
-   ```
-3. On GitHub: **Releases** → **Draft a new release** → pick tag `v1.1.0` →
-   drag in the `.dmg` from `~/GameVault-releases/` → **Publish release**.
-4. Send people the release page link. They download the `.dmg` from there.
-
-- [ ] Repo created and first release published
-
----
-
-## Step 4 — Intel Mac support (optional)
-
-Only if a friend has a pre-2021 (Intel) Mac. Today's build won't run on one.
-
-1. In `package.json`, change the `"mac"` block to:
-   ```json
-   "mac": {
-     "target": { "target": "dmg", "arch": ["arm64", "x64"] },
-     "identity": null
-   }
-   ```
-2. Commit, `npm version patch`, `npm run dist`.
-3. You now get two files — `...-arm64.dmg` (Apple Silicon) and `...-x64.dmg`
-   (Intel). Send people the right one, or just send both and let them pick.
-
-- [ ] Done (or: not needed)
-
----
-
-## Step 5 — Windows support (optional)
-
-Only if someone needs Windows. electron-builder **cannot** build a Windows
-`.exe` from a Mac.
-
-Easiest path: on a Windows PC, install [Node.js](https://nodejs.org), then:
+```bash
+# after committing whatever changes:
+npm version patch          # or minor
+git push --follow-tags
 ```
-git clone <your repo>
-cd GameTrackerApp
-npm install
-npm run dist
-```
-The `win` config (`nsis`) is already in `package.json`. Output is a
-`Game Vault Setup 1.1.0.exe` in `release/`.
 
-(The cleaner long-term answer is GitHub Actions building all platforms
-automatically — worth setting up if Windows becomes a regular need.)
+Then: repo → **Actions** tab → watch the three build jobs. When they finish,
+repo → **Releases** → there's a new **draft** with `.dmg`, `.exe`, and
+`.AppImage` attached. Add notes, publish it.
 
-- [ ] Done (or: not needed)
+- [ ] A tag push produced a draft release with all three installers
+
+### 2. Get the Windows build onto your PC
+
+Once step 1 has produced a Windows `.exe`:
+
+1. On your Windows machine, download the `Game Vault Setup <version>.exe` from
+   the release (you'll need to be signed into GitHub with repo access).
+2. Run it. SmartScreen will warn — **More info → Run anyway**.
+3. Sign in, confirm your library loads and game search works.
+
+- [ ] Windows build installed and working
+
+### 3. (When ready for a wider audience) Make the repo public
+
+This is what switches auto-update on. The code is safe to open up — the only
+committed Supabase value is the publishable key (public by design), and the
+Twitch secret is server-side only.
+
+1. Repo → **Settings → General → Danger Zone → Change repository visibility →
+   Make public**.
+2. Nothing else changes — the workflow and `build.publish` already point at
+   `Aceluke24/GameTrackerApp`.
+3. After this: **Windows and Linux users get auto-update**. Mac users still
+   download the `.dmg` manually (see step 4).
+
+- [ ] Repo public, auto-update confirmed working on a Windows install
+
+### 4. (Optional) Code signing
+
+Needed for: no scary warnings on first launch, **and** macOS auto-update.
+
+- **macOS:** Apple Developer account ($99/yr). Then set `build.mac.identity`
+  and add notarization.
+- **Windows:** code-signing certificate (~$100–400/yr). Optional — the
+  "Run anyway" click is mild.
+
+Skip until the app has real reach. Documented in RELEASING.md → Code signing.
+
+- [ ] Not doing yet
 
 ---
 
-## Not doing (deliberately)
+## Reference: password resets
 
-- **Code signing** — skipped. Users click past a one-time warning
-  (right-click → Open on Mac, "More info → Run anyway" on Windows).
-- **Auto-update** — not set up. Every new version means people reinstall
-  manually. Revisit after you're on GitHub Releases (needs `electron-updater`).
+Email confirmation is off, but "Forgot password?" still emails through
+Supabase's built-in sender (2/hour cap). Fine because:
+
+- Logged-in users change their password in Settings (no email).
+- Resets are one-at-a-time; the 2/hour cap is a burst problem.
+- If a reset email doesn't arrive: Supabase dashboard → Authentication →
+  Users → pick the person → set a new password or send a recovery link.
+
+If resets ever outgrow this, set up custom SMTP (Gmail as SMTP server, or
+Resend/Mailgun with a ~$10/yr domain). Not worth it now.

@@ -119,23 +119,22 @@ troubleshooting — see [RELEASING.md](RELEASING.md).
 
 ### Distributing to others
 
-Builds are published as [GitHub Releases](https://github.com/Aceluke24/GameTrackerApp/releases),
-each with the `.dmg` attached and tied to a `vX.Y.Z` git tag.
+Pushing a `vX.Y.Z` tag triggers [GitHub Actions](.github/workflows/release.yml)
+to build macOS, Windows, and Linux installers and attach them to a draft
+[GitHub Release](https://github.com/Aceluke24/GameTrackerApp/releases). You
+add notes and publish it.
 
-**The repo is currently private**, which means release assets can only be
-downloaded by people added as collaborators. For now, hand the `.dmg` to
-testers directly (AirDrop / a shared drive) and use the Releases page as the
-version record.
+The app self-updates from published Releases via `electron-updater`, **but**:
 
-**Plan: make the repo public** once it's ready for a wider audience, so
-anyone can download a release without a GitHub account. The code is safe to
-open up — the only committed Supabase value is the publishable key (public
-by design; Row Level Security protects user data), and the Twitch/IGDB
-secret lives only as a Supabase Edge Function secret, never in the repo. To
-flip it: repo **Settings → Danger Zone → Change repository visibility**.
-After going public, add [`electron-updater`](https://www.electron.build/auto-update)
-so installed apps update themselves from Releases instead of manual
-reinstalls.
+- **The repo is currently private**, so release assets are only downloadable
+  by collaborators, and auto-update can't fetch them. For now: invite testers
+  to the repo, or hand them the installer directly.
+- **Auto-update goes live when the repo is made public** (planned — the code
+  is safe to open, no secrets are committed). At that point Windows and Linux
+  update themselves; macOS still needs code signing (an Apple Developer
+  account) before its auto-update works.
+
+Full process and the public-switch steps: [RELEASING.md](RELEASING.md).
 
 ---
 

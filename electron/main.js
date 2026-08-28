@@ -2,6 +2,7 @@ require('dotenv').config();
 const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
+const { autoUpdater } = require('electron-updater');
 
 // app.isPackaged is false when run via `npm run dev` / `electron .` and true
 // inside a built .dmg/.exe/.AppImage — a reliable signal that doesn't depend
@@ -197,7 +198,31 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+
+  checkForUpdates();
 });
+
+// Self-update from GitHub Releases (config: package.json "build.publish").
+// checkForUpdatesAndNotify() downloads a newer release in the background and
+// shows a native notification when it's ready; it installs on next quit.
+//
+// Caveats, until they're resolved:
+//   - While the repo is PRIVATE, release assets aren't downloadable without
+//     a token, so the check fails — caught below and ignored. It starts
+//     working automatically once the repo is public, no code change needed.
+//   - macOS only installs a self-downloaded update if the app is code-signed,
+//     which it currently isn't (build.mac.identity is null). So in practice
+//     this reaches Windows users first; Mac users update by downloading a new
+//     .dmg until there's an Apple Developer signing certificate.
+function checkForUpdates() {
+  if (isDev) return; // no packaged app to replace, and no publish info
+  autoUpdater.on('error', (err) => {
+    console.log('Update check failed (safe to ignore):', err?.message ?? err);
+  });
+  autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+    console.log('Update check failed (safe to ignore):', err?.message ?? err);
+  });
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

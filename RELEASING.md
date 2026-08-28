@@ -6,14 +6,14 @@ background you need when you come back to this after a few months away.
 - [Mental model](#mental-model)
 - [The release flow](#the-release-flow)
 - [Versioning](#versioning)
-- [Keeping the .dmg files](#keeping-the-dmg-files)
+- [Keeping the installers](#keeping-the-dmg-files)
 - [What is baked into a build](#what-is-baked-into-a-build)
 - [The Supabase side](#the-supabase-side)
 - [Building for Windows / Intel Macs](#building-for-windows--intel-macs)
 - [Code signing (currently skipped)](#code-signing-currently-skipped)
 - [Gotchas](#gotchas)
 - [Troubleshooting](#troubleshooting)
-- [Future: GitHub Releases + auto-update](#future-github-releases--auto-update)
+- [Auto-update](#auto-update)
 
 ---
 
@@ -46,38 +46,49 @@ Run everything from the repo root (`~/GameTrackerApp`).
 git add -A
 git commit -m "Describe the change"
 
-# 2. Bump the version. This edits package.json's "version", commits that
-#    change, and creates a git tag (e.g. v1.0.1) — all in one command.
+# 2. (Recommended) Build locally and smoke-test before tagging:
+#    - fully quit `npm run dev` first (see Gotchas)
+#    - npm run dist  ->  open release/*.dmg, drag to Applications
+#    - right-click -> Open the first time (unsigned; see Code signing)
+#    - sign in, load your library, search for a game
+npm run dist
+
+# 3. Bump the version. This edits package.json's "version", commits that
+#    change, and creates a git tag (e.g. v1.1.1) — all in one command.
 #    Use "patch" for fixes, "minor" for new features. (See Versioning.)
 npm version patch
 
-# 3. Build the installer.
-npm run dist
-#    -> release/Game Vault-<version>-arm64.dmg
+# 4. Push the commit AND the tag. Pushing the tag is what kicks off the
+#    build — GitHub Actions builds macOS, Windows, and Linux installers
+#    (see .github/workflows/release.yml).
+git push --follow-tags
 
-# 4. Test the .dmg for real:
-#    - fully quit `npm run dev` first (see Gotchas)
-#    - open the .dmg, drag to Applications, launch
-#    - right-click -> Open the first time (unsigned; see Code signing)
-#    - sign in, load your library, search for a game, do a Steam import
+# 5. Watch the build: repo -> Actions tab. ~10-15 min for all three.
 
-# 5. Archive the .dmg you just tested (see Keeping the .dmg files).
-mkdir -p ~/GameVault-releases
-mv "release/Game Vault-$(node -p "require('./package.json').version")-arm64.dmg" ~/GameVault-releases/
-
-# 6. If you have a git remote set up, push the commits and the tag:
-git push && git push --tags
+# 6. Finish the release: repo -> Releases. The workflow created a DRAFT
+#    release for the tag with all the installers attached. Edit it:
+#    - add release notes (what's new + the macOS "right-click -> Open" tip)
+#    - leave "pre-release" unchecked, "latest release" checked
+#    - click "Publish release"
 ```
 
-That's it. Send people the `.dmg` from `~/GameVault-releases/`.
+Publishing the release is also what turns it on for auto-update — installed
+apps only see published (non-draft) releases.
 
-### What `npm run dist` actually does
+Local `npm run dist` still works any time for a throwaway test build; it just
+doesn't publish anything.
 
-`package.json` → `"dist": "npm run build && electron-builder"`
+### What the build actually does
+
+`npm run dist` → `npm run build && electron-builder`
+`npm run release` → same, plus `--publish always` (this is what CI runs)
 
 1. `npm run build` → `vite build` bundles `src/` (the React UI) into `dist/`.
-2. `electron-builder` wraps `dist/` + `electron/` + `node_modules/` into
-   `Game Vault.app` and packages it as a `.dmg` in `release/`.
+2. `electron-builder` wraps `dist/` + `electron/` + `node_modules/` into the
+   app and packages it — `.dmg` + `.zip` on macOS, `.exe` on Windows,
+   `.AppImage` on Linux — into `release/`. With `--publish always` it also
+   uploads them (and the `latest*.yml` update-metadata files) to the draft
+   GitHub Release for the current tag.
 
 Config for step 2 is the `"build"` block in `package.json`:
 
@@ -89,17 +100,26 @@ Config for step 2 is the `"build"` block in `package.json`:
 - `mac.identity: null` — disables code signing (see that section).
 - icons are generated automatically from `build/icon.png` (1024×1024).
 
+### CI build (GitHub Actions)
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml) runs on every
+`v*.*.*` tag push (or manually from the Actions tab). It builds all three
+platforms — each on its own runner, because electron-builder can't
+cross-compile — and `npm run release` uploads the installers to a **draft**
+GitHub Release for the tag.
+
+**Cost (private repo):** GitHub gives 2,000 Actions minutes/month free, but
+macOS runners bill **10×** (Windows 2×, Linux 1×). A full build is roughly
+~100 billed minutes, so ~20 releases/month before hitting the cap. Making the
+repo public removes the limit entirely.
+
 ### Housekeeping
 
-`release/` keeps old-version `.dmg`s from previous builds — it is **not**
-cleaned automatically. Either wipe it before a build:
-
-```bash
-rm -rf release && npm run dist
-```
-
-or just ignore the clutter and grab the file with the right version number.
-`release/` is gitignored — never commit build output.
+Local `release/` keeps old-version installers from previous builds — it is
+**not** cleaned automatically. Either wipe it before a build (`rm -rf release
+&& npm run dist`) or ignore the clutter. `release/` is gitignored — never
+commit build output. CI runners are always clean, so this only affects local
+builds.
 
 ---
 
@@ -155,6 +175,11 @@ Recommendation:
 
 Keep a one-line note per release (a `NOTES.txt` in that folder is fine):
 what changed, and whether it needed a function redeploy or a migration.
+
+Since CI publishes the installers to GitHub Releases, "keeping them" is
+mostly automatic now — every published release keeps its attached files
+forever. The local `~/GameVault-releases/` folder is a convenience for
+grabbing the *previous* version fast when something breaks.
 
 ---
 
@@ -234,19 +259,19 @@ provider (Resend, free tier) in the dashboard under
 
 ## Building for Windows / Intel Macs
 
-The current build is **Apple Silicon (arm64) only**. `npm run dist` on your
-Mac builds for the Mac it's running on.
+**CI already builds Windows (`.exe`) and Linux (`.AppImage`)** on every tag —
+that's the whole point of the GitHub Actions workflow. You don't need a
+Windows machine.
 
-- **Intel Macs:** change `mac` in `package.json` to
-  `"target": { "target": "dmg", "arch": ["arm64", "x64"] }`. Produces two
-  `.dmg`s.
-- **Windows (`.exe`):** electron-builder **cannot** cross-build a real
-  Windows installer from macOS. Options: build on an actual Windows machine
-  (`npm install && npm run dist`), or set up GitHub Actions with a
-  `windows-latest` runner. The `win` config (`nsis`) is already in
-  `package.json`, it just needs to run on Windows.
-- **Linux (`.AppImage`):** builds fine on Mac or Linux; `linux` config is
-  already there.
+A local `npm run dist` on your Mac only builds for the Mac it's running on
+(currently Apple Silicon / arm64). That's fine — local builds are just for
+your own quick testing; the real cross-platform installers come from CI.
+
+**Intel Macs:** the CI `macos-latest` runner is Apple Silicon, so it
+produces an arm64 build. To also cover Intel Macs, change `mac` in
+`package.json` to `"target": { "target": ["dmg", "zip"], "arch": ["arm64",
+"x64"] }` — CI will then produce both. Skip it unless a friend has a
+pre-2021 Mac.
 
 ---
 
@@ -355,19 +380,32 @@ Run `supabase login`.
 
 ---
 
-## Future: GitHub Releases + auto-update
+## Auto-update
 
-When you create a GitHub repo for this:
+`electron-updater` is wired into [`electron/main.js`](electron/main.js)
+(`checkForUpdates()`): a packaged app checks the GitHub Releases for a newer
+version on launch, downloads it in the background, and installs it on next
+quit. Config comes from the `build.publish` block in `package.json`.
 
-1. `git remote add origin <url>` and `git push --all && git push --tags`.
-2. For each version tag, create a GitHub **Release** and attach the `.dmg`
-   (and `.dmg.blockmap`). This is your versioned binary archive — free,
-   replaces `~/GameVault-releases/`.
-3. Add `electron-updater` + a `publish` block pointing at the repo. Then
-   installed apps check GitHub on launch and update themselves — no more
-   "download the new `.dmg` and drag it over." This is the main reason to
-   get on GitHub Releases.
+**It is not fully active yet.** Two things gate it:
 
-Auto-update needs the versions to increase monotonically (which `npm
-version` already guarantees) and — on macOS — really wants the app to be
-signed to update cleanly.
+1. **Repo is private.** Release assets on a private repo can't be downloaded
+   without a token, and shipping a token inside the app is a bad idea. The
+   update check fails and is caught/ignored. **It starts working the moment
+   you make the repo public — no code change.**
+2. **macOS needs code signing.** macOS refuses to install a self-downloaded
+   update unless the app is signed (see Code signing). So once the repo is
+   public, **Windows and Linux users get auto-update; Mac users keep
+   downloading the `.dmg`** until there's an Apple Developer certificate.
+
+Auto-update only sees **published** (non-draft, non-pre-release) releases,
+and needs versions to only ever increase — `npm version` guarantees that.
+
+### Making the repo public (when ready)
+
+1. Repo → **Settings → General → Danger Zone → Change repository visibility
+   → Make public**.
+2. Nothing else to change — `build.publish` and the workflow already point
+   at `Aceluke24/GameTrackerApp`.
+3. Verify: next release, install it, then publish a newer release and
+   confirm a Windows install picks it up.

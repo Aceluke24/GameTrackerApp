@@ -8,12 +8,14 @@
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build",
     "dist": "npm run build && electron-builder",
+    "release": "npm run build && electron-builder --publish always",
     "electron": "electron ."
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",
     "axios": "^1.6.7",
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
@@ -42,11 +44,19 @@
       "electron/**/*",
       "node_modules/**/*"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "Aceluke24",
+      "repo": "GameTrackerApp"
+    },
     "win": {
       "target": "nsis"
     },
     "mac": {
-      "target": "dmg",
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "identity": null
     },
     "linux": {
