@@ -80,15 +80,17 @@ doesn't publish anything.
 
 ### What the build actually does
 
-`npm run dist` → `npm run build && electron-builder`
-`npm run release` → same, plus `--publish always` (this is what CI runs)
+`npm run dist` → `npm run build && electron-builder` (local, no upload)
+`npm run release` → same, plus `--publish always` — a manual fallback for
+publishing from your own machine if CI is unavailable.
 
 1. `npm run build` → `vite build` bundles `src/` (the React UI) into `dist/`.
 2. `electron-builder` wraps `dist/` + `electron/` + `node_modules/` into the
    app and packages it — `.dmg` + `.zip` on macOS, `.exe` on Windows,
-   `.AppImage` on Linux — into `release/`. With `--publish always` it also
-   uploads them (and the `latest*.yml` update-metadata files) to the draft
-   GitHub Release for the current tag.
+   `.AppImage` on Linux — into `release/`, alongside `latest*.yml`
+   update-metadata files.
+
+Normally you don't run either of these for a release — CI does it (below).
 
 Config for step 2 is the `"build"` block in `package.json`:
 
@@ -103,10 +105,17 @@ Config for step 2 is the `"build"` block in `package.json`:
 ### CI build (GitHub Actions)
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) runs on every
-`v*.*.*` tag push (or manually from the Actions tab). It builds all three
-platforms — each on its own runner, because electron-builder can't
-cross-compile — and `npm run release` uploads the installers to a **draft**
-GitHub Release for the tag.
+`v*.*.*` tag push (or manually from the Actions tab). Two stages:
+
+1. **build** — one job per OS builds its installers and uploads them as
+   workflow artifacts. No job touches the GitHub Release.
+2. **release** — one job downloads all the artifacts and creates a single
+   **draft** GitHub Release for the tag.
+
+The single-release-job design is deliberate: an earlier version had each
+build job publish directly, and parallel jobs raced to create the release —
+producing two or three duplicate drafts. If you ever see duplicate drafts,
+that regressed.
 
 **Cost (private repo):** GitHub gives 2,000 Actions minutes/month free, but
 macOS runners bill **10×** (Windows 2×, Linux 1×). A full build is roughly
