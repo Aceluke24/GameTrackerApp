@@ -113,6 +113,10 @@ npm run dist
 # Linux: .AppImage
 ```
 
+For the full release process — version bumping, keeping old builds, when to
+redeploy the Edge Function vs. rebuild the app, code signing, and
+troubleshooting — see [RELEASING.md](RELEASING.md).
+
 ---
 
 ## Project Structure
