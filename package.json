@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build",
+    "postinstall": "install-electron",
     "dist": "npm run build && electron-builder",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -67,7 +68,8 @@
         "dmg",
         "zip"
       ],
-      "identity": null
+      "identity": "-",
+      "hardenedRuntime": false
     },
     "linux": {
       "target": "AppImage"

@@ -172,7 +172,7 @@ Watch a run: repo → **Actions** tab. Takes ~10–15 min.
 | **Platforms** | macOS (Apple Silicon), Windows (x64), Linux (AppImage) — built by CI on every version tag |
 | **Where** | [GitHub Releases](https://github.com/Aceluke24/GameTrackerApp/releases) |
 | **Repo visibility** | **Private.** Only people invited to the repo can download releases. Invite testers, or send them the installer file directly. |
-| **Code signing** | None. First launch shows an "unidentified developer" warning: macOS → right-click the app → **Open**; Windows → **More info → Run anyway**. |
+| **Code signing** | Ad-hoc only (`mac.identity: "-"`), not notarized. First launch shows an "unverified developer" warning: macOS → right-click the app → **Open** → **Open** (or **System Settings → Privacy & Security → Open Anyway**); Windows → **More info → Run anyway**. No Terminal needed. |
 | **Auto-update** | Wired in (`electron-updater`) but **dormant** — a private repo's releases can't be fetched without a token. |
 
 **Making the repo public** (planned, when ready for a wider audience) turns

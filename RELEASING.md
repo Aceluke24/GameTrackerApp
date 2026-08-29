@@ -49,7 +49,7 @@ git commit -m "Describe the change"
 # 2. (Recommended) Build locally and smoke-test before tagging:
 #    - fully quit `npm run dev` first (see Gotchas)
 #    - npm run dist  ->  open release/*.dmg, drag to Applications
-#    - right-click -> Open the first time (unsigned; see Code signing)
+#    - right-click -> Open the first time (unnotarized; see Code signing)
 #    - sign in, load your library, search for a game
 npm run dist
 
@@ -99,7 +99,8 @@ Config for step 2 is the `"build"` block in `package.json`:
   app (new data folder, new keychain identity → everyone logged out).
 - `productName`: `Game Vault` — the display name.
 - `directories.output`: `release` — where builds land.
-- `mac.identity: null` — disables code signing (see that section).
+- `mac.identity: "-"` — ad-hoc code signing; `mac.hardenedRuntime: false`
+  goes with it (see the Code signing section).
 - icons are generated automatically from `build/icon.png` (1024×1024).
 
 ### CI build (GitHub Actions)
@@ -290,22 +291,33 @@ pre-2021 Mac.
 
 ---
 
-## Code signing (currently skipped)
+## Code signing (ad-hoc only, not notarized)
 
-`mac.identity: null` means builds are **not signed or notarized**. Effect on
-users:
+`mac.identity: "-"` means electron-builder **ad-hoc signs** the macOS build
+(and `mac.hardenedRuntime: false` keeps that ad-hoc signature from tripping
+library validation). It is **not** signed with an Apple certificate and
+**not** notarized. Effect on users:
 
-- **macOS:** first launch is blocked. They must **right-click the app →
-  Open → Open** (plain double-click gives no override button). After that it
-  runs normally. A `.dmg` downloaded via a browser also gets a
-  quarantine flag that makes this worse; `curl`/AirDrop is cleaner.
+- **macOS:** first launch shows *"Apple could not verify … is free of
+  malware."* They clear it **without the Terminal**: right-click the app →
+  **Open** → **Open**, or **System Settings → Privacy & Security → Open
+  Anyway**. After that it runs normally.
 - **Windows:** SmartScreen shows "Windows protected your PC" → **More info →
   Run anyway**.
 
-To remove the warnings later you need:
+> **Why not `identity: null`?** That skips signing entirely, which on Apple
+> Silicon leaves the app bundle with a *broken* signature (no
+> `_CodeSignature/CodeResources`) — macOS then reports it as **"damaged and
+> can't be opened,"** which right-click → Open does **not** fix. Ad-hoc
+> signing (`"-"`) produces a self-consistent signature, so you get the
+> milder "unverified developer" prompt instead. This changed in v1.2.3.
 
-- **macOS:** an Apple Developer account ($99/yr), then set `mac.identity` and
-  add notarization config.
+To remove the warning entirely (plain double-click, no prompt) you need:
+
+- **macOS:** an Apple Developer account ($99/yr), then set `mac.identity` to
+  your "Developer ID Application" cert, set `hardenedRuntime: true`, add an
+  entitlements file, and add notarization config (`notarize` + an
+  app-specific password or API key in CI secrets).
 - **Windows:** a code-signing certificate (~$100–400/yr).
 
 Fine to skip for friends-and-family. Worth doing before any wider release.
@@ -335,6 +347,16 @@ pgrep -fl "GameTrackerApp/node_modules/electron"   # should print nothing
 Running two copies against the same saved login can also trip Supabase's
 refresh-token reuse detection and revoke your session (you'll get logged
 out and have to sign back in).
+
+### `npm run dev` needs the Electron binary, which `npm install` fetches via a postinstall
+
+Electron 42+ dropped the automatic binary download from its own package, so
+`package.json` has `"postinstall": "install-electron"` to do it. A normal
+`npm install` / `npm ci` runs it. If `npm run dev` ever errors with
+`Cannot read properties of undefined (reading 'getVersion')` (electron-updater
+in the stack), the binary is missing — run `npm run postinstall` or
+`node_modules/.bin/install-electron`. `npm run dist` is unaffected;
+electron-builder downloads its own Electron separately.
 
 ### `npm version` needs a clean working tree
 
