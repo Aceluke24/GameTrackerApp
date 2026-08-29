@@ -105,12 +105,18 @@ Config for step 2 is the `"build"` block in `package.json`:
 ### CI build (GitHub Actions)
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) runs on every
-`v*.*.*` tag push (or manually from the Actions tab). Two stages:
+`v*.*.*` tag push (or manually from the Actions tab). Three stages:
 
-1. **build** — one job per OS builds its installers and uploads them as
+1. **test** — runs `npm test` on Linux. If a unit test fails, the build
+   never starts (no point spending macOS runner minutes on a broken tree).
+2. **build** — one job per OS builds its installers and uploads them as
    workflow artifacts. No job touches the GitHub Release.
-2. **release** — one job downloads all the artifacts and creates a single
+3. **release** — one job downloads all the artifacts and creates a single
    **draft** GitHub Release for the tag.
+
+Every job reads its Node version from [`.nvmrc`](.nvmrc) (currently 24), so
+CI and your machine stay on the same version — run `nvm use` in the repo to
+match it locally.
 
 The single-release-job design is deliberate: an earlier version had each
 build job publish directly, and parallel jobs raced to create the release —

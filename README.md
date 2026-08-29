@@ -126,6 +126,18 @@ Produces an installer in `release/` for the OS you're on (`.dmg` on macOS,
 `.exe` on Windows, `.AppImage` on Linux). Nothing is uploaded. Use this to
 sanity-check a build before tagging a real release.
 
+### Run the tests
+```bash
+npm test          # run once (what CI runs)
+npm run test:watch  # re-run automatically as you edit
+```
+Unit tests live next to the code they cover as `*.test.js`, run by
+[Vitest](https://vitest.dev/). CI runs `npm test` before it builds anything,
+so a failing test blocks a release.
+
+> **Node version:** this repo pins Node via [`.nvmrc`](.nvmrc) (currently 24).
+> Run `nvm use` in the project folder to switch to it.
+
 ---
 
 ## Releasing a new version
@@ -220,7 +232,7 @@ game-vault/
 │   ├── theme.js        ← Main/Accent color presets
 │   └── styles.css      ← Global CSS variables + base styles
 ├── index.html
-├── vite.config.js
+├── vite.config.mjs
 ├── package.json        ← deps + the electron-builder "build" config
 ├── RELEASING.md        ← the full release + distribution runbook
 └── README.md

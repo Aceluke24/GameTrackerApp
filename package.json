@@ -4,10 +4,15 @@
   "description": "Your personal game backlog tracker",
   "author": "Aceluke24 <aceluke24@gmail.com>",
   "main": "electron/main.js",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build",
     "dist": "npm run build && electron-builder",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "release": "npm run build && electron-builder --publish always",
     "electron": "electron ."
   },
@@ -18,13 +23,14 @@
     "electron-updater": "^6.8.9"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
+    "@vitejs/plugin-react": "^5.2.0",
     "concurrently": "^8.2.2",
     "electron": "^43.4.1",
     "electron-builder": "^26.15.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "vite": "^5.1.4",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.11",
     "wait-on": "^7.2.0"
   },
   "build": {

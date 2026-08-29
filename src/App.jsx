@@ -20,6 +20,7 @@ import { importSteamLibrary, enrichWithHLTB } from './api/steam';
 import { gamesToCSV, gamesToJSON, saveExportFile } from './api/export';
 import { applyColorScheme } from './theme';
 import { describeError, onNetworkTrouble, onSessionExpired } from './api/errors';
+import { filterAndSortGames } from './utils/filterGames';
 import useOnlineStatus from './hooks/useOnlineStatus';
 
 // Matches IGDB's genre taxonomy so manually picked genres line up with
@@ -32,23 +33,6 @@ export const GENRES = [
   'Sport', 'Strategy', 'Tactical', 'Turn-based strategy (TBS)', 'Visual Novel',
 ];
 
-// Sorts a field low-to-high (or high-to-low with reverse). Games with no
-// value (null/undefined) are treated as the lowest possible value, so they
-// land at whichever end actually represents "low" for the chosen direction
-// instead of always sinking to the bottom.
-function byField(field, reverse) {
-  return (a, b) => {
-    const av = a[field] ?? -Infinity;
-    const bv = b[field] ?? -Infinity;
-    return (reverse ? bv - av : av - bv) || a.title.localeCompare(b.title);
-  };
-}
-
-// The sort the "Next Up" pin applies under — an explicitly chosen sort or an
-// active search means the user is looking for something specific, so the pin
-// backs off rather than fighting that ordering.
-const DEFAULT_SORT = 'title_asc';
-
 export const SORT_OPTIONS = [
   { key: 'title_asc', label: 'Title (A–Z)' },
   { key: 'title_desc', label: 'Title (Z–A)' },
@@ -56,14 +40,6 @@ export const SORT_OPTIONS = [
   { key: 'time_desc', label: 'Time to Beat (Long–Short)' },
   { key: 'date_added_desc', label: 'Recently Added' },
 ];
-
-export const SORT_COMPARATORS = {
-  title_asc: (a, b) => a.title.localeCompare(b.title),
-  title_desc: (a, b) => b.title.localeCompare(a.title),
-  time_asc: byField('hltb_main', false),
-  time_desc: byField('hltb_main', true),
-  date_added_desc: (a, b) => (b.date_added || '').localeCompare(a.date_added || '') || a.title.localeCompare(b.title),
-};
 
 // 12 fixed slots (label + emoji editable per user, see SettingsPage's status
 // editor). `key` is what actually gets written to games.status and never
@@ -530,30 +506,8 @@ export default function App() {
     });
   }
 
-  // Filter + search
-  const query = search.trim().toLowerCase();
-  const pinActive = sort === DEFAULT_SORT && !query;
-  const filtered = games
-    .filter(g => {
-      const matchesFilter = filter === 'all' || g.status === filter;
-      const matchesSearch = !query
-        || g.title.toLowerCase().includes(query)
-        || (g.platform || '').toLowerCase().includes(query)
-        || (g.genres || '').toLowerCase().includes(query);
-      const matchesTime = !timeFilter || (g.hltb_main != null && (
-        timeFilter.mode === 'under'
-          ? g.hltb_main < timeFilter.hours * 60
-          : g.hltb_main > timeFilter.hours * 60
-      ));
-      return matchesFilter && matchesSearch && matchesTime;
-    })
-    .sort((a, b) => {
-      if (pinActive) {
-        const pinDiff = (b.next_up ? 1 : 0) - (a.next_up ? 1 : 0);
-        if (pinDiff) return pinDiff;
-      }
-      return (SORT_COMPARATORS[sort] || SORT_COMPARATORS.title_asc)(a, b);
-    });
+  // Filter + search (see src/utils/filterGames.js)
+  const filtered = filterAndSortGames(games, { filter, search, sort, timeFilter });
 
   // Blank slots don't show up anywhere outside the status editor itself.
   // Each status carries a CSS var keyed to its fixed slot position (not its

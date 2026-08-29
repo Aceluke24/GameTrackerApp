@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { searchIGDB, pickBestMatch } from '../api/igdb';
 import { describeError } from '../api/errors';
+import { parseNames } from '../utils/parseNames';
+import { planBulkAdd } from '../utils/planBulkAdd';
 import './Modal.css';
-
-function parseNames(text) {
-  return text.split(/[\n,]+/).map(s => s.trim());
-}
 
 export default function BulkAddModal({ knownPlatforms, existingGames, onBulkAdd, onClose }) {
   const [platform, setPlatform] = useState('');
@@ -18,27 +16,8 @@ export default function BulkAddModal({ knownPlatforms, existingGames, onBulkAdd,
   async function handleSubmit() {
     if (!platform.trim() || processing || previewCount === 0) return;
 
-    const rawEntries = parseNames(text);
-    const skippedBlank = rawEntries.filter(e => !e).length;
-    const nonBlank = rawEntries.filter(Boolean);
-
-    const seen = new Set();
-    const skippedDuplicateInList = [];
-    const uniqueNames = [];
-    for (const name of nonBlank) {
-      const key = name.toLowerCase();
-      if (seen.has(key)) { skippedDuplicateInList.push(name); continue; }
-      seen.add(key);
-      uniqueNames.push(name);
-    }
-
-    const existingTitles = new Set(existingGames.map(g => g.title.toLowerCase()));
-    const skippedDuplicateExisting = [];
-    const toLookup = [];
-    for (const name of uniqueNames) {
-      if (existingTitles.has(name.toLowerCase())) skippedDuplicateExisting.push(name);
-      else toLookup.push(name);
-    }
+    const { toLookup, skippedBlank, skippedDuplicateInList, skippedDuplicateExisting } =
+      planBulkAdd(text, existingGames);
 
     setProcessing(true);
     setProgress({ done: 0, total: toLookup.length });

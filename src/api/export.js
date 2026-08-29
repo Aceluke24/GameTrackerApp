@@ -12,7 +12,9 @@ export function gamesToJSON(games) {
   return JSON.stringify(data, null, 2);
 }
 
-function csvCell(value) {
+// Exported for tests. Quotes a CSV field only if it contains a comma,
+// double-quote, or newline; embedded quotes are doubled per RFC 4180.
+export function csvCell(value) {
   const str = value == null ? '' : String(value);
   return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }

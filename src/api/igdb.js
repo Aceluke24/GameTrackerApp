@@ -18,7 +18,8 @@ async function igdbPost(endpoint, query) {
 // IGDB's time-to-beat data is crowd-submitted and occasionally has wild
 // outliers (e.g. a "normally" entry of 3+ years for a sandbox game) —
 // treat anything over maxHours as bad data rather than trust it.
-function plausibleMinutes(seconds, maxHours) {
+// Exported for tests.
+export function plausibleMinutes(seconds, maxHours) {
   if (!seconds) return null;
   const minutes = Math.round(seconds / 60);
   return minutes <= maxHours * 60 ? minutes : null;
@@ -26,7 +27,8 @@ function plausibleMinutes(seconds, maxHours) {
 
 // A time-to-beat entry backed by more community submissions is more
 // trustworthy — 5+ submissions is treated as full confidence.
-function confidenceFromCount(count) {
+// Exported for tests.
+export function confidenceFromCount(count) {
   if (!count) return null;
   return Math.min(100, Math.round((count / 5) * 100));
 }

@@ -1,56 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatTime } from '../api/igdb';
+import { scoreBacklog, pickWeighted } from '../utils/backlogScore';
+import { computeLibraryStats } from '../utils/libraryStats';
 import './StatsPage.css';
-
-const MINUTES_PER_DAY_PLAYED = 120;
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
-
-function scoreBacklog(games) {
-  const backlog = games.filter(g => g.status === 'backlog');
-  if (backlog.length === 0) return [];
-
-  const times = backlog.map(g => g.hltb_main).filter(Boolean);
-  const ratings = backlog.map(g => g.igdb_rating).filter(Boolean);
-  const dates = backlog.map(g => g.date_added ? new Date(g.date_added).getTime() : Date.now());
-
-  const maxTime = times.length ? Math.max(...times) : 1;
-  const maxRating = ratings.length ? Math.max(...ratings) : 1;
-  const oldestTime = dates.length ? Math.min(...dates) : Date.now();
-  const newestTime = dates.length ? Math.max(...dates) : Date.now();
-  const dateRange = (newestTime - oldestTime) || 1;
-
-  return backlog
-    .map(g => {
-      // Shorter games score higher — up to 40pts
-      const timeScore = g.hltb_main
-        ? (1 - Math.min(g.hltb_main, maxTime) / maxTime) * 40
-        : 20;
-
-      // Higher-rated games score higher — up to 40pts
-      const ratingScore = g.igdb_rating
-        ? (g.igdb_rating / maxRating) * 40
-        : 20;
-
-      // Games that have been sitting in the backlog longer score higher — up to 20pts
-      const addedTime = g.date_added ? new Date(g.date_added).getTime() : newestTime;
-      const ageScore = ((newestTime - addedTime) / dateRange) * 20;
-
-      return { ...g, score: timeScore + ratingScore + ageScore };
-    })
-    .sort((a, b) => b.score - a.score);
-}
-
-function pickWeighted(scored, excludeId) {
-  const pool = scored.filter(g => g.id !== excludeId);
-  const candidates = pool.length > 0 ? pool : scored;
-  const totalWeight = candidates.reduce((sum, g) => sum + Math.max(g.score, 1), 0);
-  let r = Math.random() * totalWeight;
-  for (const g of candidates) {
-    r -= Math.max(g.score, 1);
-    if (r <= 0) return g;
-  }
-  return candidates[candidates.length - 1];
-}
 
 export default function StatsPage({ games, statuses }) {
   const scoredBacklog = useMemo(() => scoreBacklog(games), [games]);
@@ -65,48 +17,7 @@ export default function StatsPage({ games, statuses }) {
     setRecommendation(pickWeighted(scoredBacklog, recommendation?.id));
   }
 
-  const stats = useMemo(() => {
-    const backlogGames = games.filter(g => g.status === 'backlog' || g.status === 'playing');
-    const totalBacklogMinutes = backlogGames.reduce((sum, g) => sum + (g.hltb_main || 0), 0);
-
-    const daysToComplete = totalBacklogMinutes / MINUTES_PER_DAY_PLAYED;
-    const yearsToComplete = daysToComplete / 365;
-
-    const platforms = {};
-    games.forEach(g => {
-      const platform = g.platform || 'Unknown';
-      if (!platforms[platform]) platforms[platform] = { total: 0, finished: 0, backlogMinutes: 0 };
-      platforms[platform].total++;
-      if (g.status === 'finished') platforms[platform].finished++;
-      if (g.status === 'backlog' || g.status === 'playing') {
-        platforms[platform].backlogMinutes += g.hltb_main || 0;
-      }
-    });
-    const sortedPlatforms = Object.entries(platforms).sort((a, b) => b[1].total - a[1].total);
-    const maxPlatformGames = sortedPlatforms[0]?.[1].total || 1;
-
-    const genres = {};
-    games.forEach(g => {
-      if (!g.genres) return;
-      g.genres.split(', ').forEach(genre => {
-        genres[genre] = (genres[genre] || 0) + 1;
-      });
-    });
-    const sortedGenres = Object.entries(genres).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    const maxGenreCount = sortedGenres[0]?.[1] || 1;
-
-    const started = games.filter(g => ['finished', 'abandoned', 'want_again'].includes(g.status)).length;
-    const finished = games.filter(g => g.status === 'finished' || g.status === 'want_again').length;
-    const finishRate = started > 0 ? Math.round((finished / started) * 100) : 0;
-
-    return {
-      total: games.length,
-      totalBacklogMinutes, daysToComplete, yearsToComplete,
-      sortedPlatforms, maxPlatformGames,
-      sortedGenres, maxGenreCount,
-      started, finished, finishRate,
-    };
-  }, [games]);
+  const stats = useMemo(() => computeLibraryStats(games), [games]);
 
   if (games.length === 0) {
     return (
