@@ -9,7 +9,7 @@ Your personal game backlog tracker — a desktop app built with Electron + React
 | Run the app locally | [Running](#running) |
 | Set up a fresh Supabase project | [Setup](#setup) |
 | Ship a new version to everyone | [Releasing a new version](#releasing-a-new-version) |
-| Understand what's published, to whom, and how updates work | [Distribution status](#distribution-status) |
+| Understand what's published and how updates work | [Distribution status](#distribution-status) |
 | Full release runbook — versioning, CI cost, gotchas, troubleshooting | [RELEASING.md](RELEASING.md) |
 
 ## Features
@@ -159,9 +159,9 @@ Then, on GitHub: open the draft, add release notes, and click **Publish**.
 
 Watch a run: repo → **Actions** tab. Takes ~10–15 min.
 
-> **Full detail** — versioning rules, the CI cost on a private repo, what
-> needs a Supabase redeploy vs. an app rebuild, gotchas, and
-> troubleshooting — is in **[RELEASING.md](RELEASING.md)**.
+> **Full detail** — versioning rules, what needs a Supabase redeploy vs. an
+> app rebuild, gotchas, and troubleshooting — is in
+> **[RELEASING.md](RELEASING.md)**.
 
 ---
 
@@ -171,16 +171,13 @@ Watch a run: repo → **Actions** tab. Takes ~10–15 min.
 |---|---|
 | **Platforms** | macOS (Apple Silicon), Windows (x64), Linux (AppImage) — built by CI on every version tag |
 | **Where** | [GitHub Releases](https://github.com/Aceluke24/GameTrackerApp/releases) |
-| **Repo visibility** | **Private.** Only people invited to the repo can download releases. Invite testers, or send them the installer file directly. |
+| **Repo visibility** | **Public.** Anyone can download releases from the Releases page. |
 | **Code signing** | Ad-hoc only (`mac.identity: "-"`), not notarized. First launch shows an "unverified developer" warning: macOS → right-click the app → **Open** → **Open** (or **System Settings → Privacy & Security → Open Anyway**); Windows → **More info → Run anyway**. No Terminal needed. |
-| **Auto-update** | Wired in (`electron-updater`) but **dormant** — a private repo's releases can't be fetched without a token. |
+| **Auto-update** | Wired in (`electron-updater`) and **live for Windows + Linux** — a packaged app checks GitHub Releases on launch, downloads a newer version in the background, and installs it on next quit. **macOS still downloads the `.dmg` manually** — macOS refuses to install a self-downloaded update unless the app is code-signed (a paid Apple Developer account). |
 
-**Making the repo public** (planned, when ready for a wider audience) turns
-auto-update on for Windows and Linux automatically — no code change. The code
-is safe to open: the only committed Supabase value is the publishable key
-(public by design), and the Twitch secret lives only in the Edge Function.
-macOS auto-update additionally needs code signing (a paid Apple Developer
-account). Steps are in [RELEASING.md](RELEASING.md#making-the-repo-public-when-ready).
+The repo is safe to have open: the only committed Supabase value is the
+publishable key (public by design, protected by Row Level Security), and the
+Twitch client secret lives only in the `igdb` Edge Function, never in the app.
 
 ---
 

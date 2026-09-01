@@ -124,10 +124,10 @@ build job publish directly, and parallel jobs raced to create the release —
 producing two or three duplicate drafts. If you ever see duplicate drafts,
 that regressed.
 
-**Cost (private repo):** GitHub gives 2,000 Actions minutes/month free, but
-macOS runners bill **10×** (Windows 2×, Linux 1×). A full build is roughly
-~100 billed minutes, so ~20 releases/month before hitting the cap. Making the
-repo public removes the limit entirely.
+**Cost:** the repo is public, so GitHub Actions minutes are unlimited and
+free — no cap to watch. (On a private repo you'd get 2,000 minutes/month,
+with macOS runners billing **10×**, Windows 2×, Linux 1× — about 20
+releases/month before hitting the cap.)
 
 ### Housekeeping
 
@@ -424,25 +424,19 @@ Run `supabase login`.
 version on launch, downloads it in the background, and installs it on next
 quit. Config comes from the `build.publish` block in `package.json`.
 
-**It is not fully active yet.** Two things gate it:
+**It is live for Windows and Linux.** The repo is public, so release assets
+download without a token and the update check just works. One caveat remains:
 
-1. **Repo is private.** Release assets on a private repo can't be downloaded
-   without a token, and shipping a token inside the app is a bad idea. The
-   update check fails and is caught/ignored. **It starts working the moment
-   you make the repo public — no code change.**
-2. **macOS needs code signing.** macOS refuses to install a self-downloaded
-   update unless the app is signed (see Code signing). So once the repo is
-   public, **Windows and Linux users get auto-update; Mac users keep
-   downloading the `.dmg`** until there's an Apple Developer certificate.
+- **macOS needs code signing.** macOS refuses to install a self-downloaded
+  update unless the app is signed (see Code signing). So **Windows and Linux
+  users get auto-update; Mac users keep downloading the `.dmg`** until
+  there's an Apple Developer certificate.
 
 Auto-update only sees **published** (non-draft, non-pre-release) releases,
 and needs versions to only ever increase — `npm version` guarantees that.
 
-### Making the repo public (when ready)
+### Verifying auto-update
 
-1. Repo → **Settings → General → Danger Zone → Change repository visibility
-   → Make public**.
-2. Nothing else to change — `build.publish` and the workflow already point
-   at `Aceluke24/GameTrackerApp`.
-3. Verify: next release, install it, then publish a newer release and
-   confirm a Windows install picks it up.
+Install a release, then publish a newer one and confirm a Windows or Linux
+install picks it up on next launch. `build.publish` and the workflow already
+point at `Aceluke24/GameTrackerApp`, so there's nothing to configure.
